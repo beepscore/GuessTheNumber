@@ -10,15 +10,17 @@
 #import <GameKit/GameKit.h>
 
 @interface GuessTheNumberViewController : UIViewController 
-<GKPeerPickerControllerDelegate, UITextFieldDelegate> {
-    GKSession *session;
+<GKPeerPickerControllerDelegate, GKSessionDelegate, UITextFieldDelegate> {
+    GKSession *gameSession;
+    UILabel *instructionRangeLabel;
     UITextField *numberField;
     UILabel *opponentNumber;
     UIBarButtonItem *sendBarButton;
-
 }
 
-@property(nonatomic, retain)GKSession *session;
+@property(nonatomic, retain)GKSession *gameSession;
+@property(nonatomic, retain)IBOutlet UILabel *instructionRangeLabel;
+
 @property(nonatomic, retain)IBOutlet UITextField *numberField;
 @property(nonatomic, retain)IBOutlet UILabel *opponentNumber;
 

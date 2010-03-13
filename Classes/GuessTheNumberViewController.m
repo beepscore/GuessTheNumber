@@ -14,17 +14,47 @@
 
 @implementation GuessTheNumberViewController
 
-@synthesize session;
+@synthesize gameSession;
 // instantiated in nib file
+@synthesize instructionRangeLabel;
 @synthesize numberField;
 @synthesize opponentNumber;
 @synthesize sendBarButton;
 
+const NSInteger kMinimum = 1;
+const NSInteger kMaximum = 10;
+NSInteger theAnswer;
+
+
 // Implement viewDidLoad to do additional setup after loading the view, typically from a nib.
+- (void)enableUI:(BOOL)enableUI {
+    if (! enableUI) {
+        self.instructionRangeLabel.hidden = YES;
+        self.numberField.hidden = YES;
+        self.sendBarButton.enabled = NO;        
+    } else {
+        self.instructionRangeLabel.hidden = NO;
+        self.numberField.hidden = NO;
+        self.sendBarButton.enabled = YES;        
+    }
+
+}
+
+
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.sendBarButton.enabled = NO;
-    self.numberField.hidden = YES;
+    [self enableUI:NO];
+}
+
+
+#pragma mark -
+// Ref http://stackoverflow.com/questions/1131101/whats-wrong-with-this-randomize-function
+// Note this works for arguments in either algebraic order.  i.e. it works if minimum > maximum
+//- (float)randomValueBetweenMin:(float)minimum andMax:(float)maximum {
+//    return (((float) arc4random() / 0xFFFFFFFFu) * (maximum - minimum)) + minimum;
+//}
+- (NSInteger)randomIntegerBetweenMin:(NSInteger)minimum andMax:(NSInteger)maximum {
+    return (((NSInteger) arc4random() / 0xFFFFFFFFu) * (maximum - minimum)) + minimum;
 }
 
 
@@ -45,7 +75,8 @@
 
 - (void)setView:(UIView *)newView {
     if (nil == newView) {
-        self.session = nil;
+        self.gameSession = nil;
+        self.instructionRangeLabel = nil;
         self.numberField = nil;
         self.opponentNumber = nil;
         self.sendBarButton = nil;
@@ -55,7 +86,8 @@
 
 
 - (void)dealloc {
-    [session release], session = nil;
+    [gameSession release], gameSession = nil;
+    [instructionRangeLabel release], instructionRangeLabel = nil;
     [numberField release], numberField = nil;
     [opponentNumber release], opponentNumber = nil;
     [sendBarButton release], sendBarButton = nil;
@@ -63,7 +95,7 @@
 }
 
 
-#pragma mark UI interaction
+#pragma mark UI event handlers
 /*
  // Override to allow orientations other than the default portrait orientation.
  - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
@@ -85,8 +117,8 @@
     // do nothing.  Make user press send button
 }
 
-#pragma mark IBAction
 
+#pragma mark IBActions
 - (IBAction)startAGame:(id)sender {
     GKPeerPickerController *picker = [[GKPeerPickerController alloc] init];
     picker.delegate = self;
@@ -104,29 +136,74 @@
     NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
     [archiver encodeInt:number forKey:@"number"];
     [archiver finishEncoding];
-    [self.session sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
+    [self.gameSession sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
     [archiver release], archiver = nil;
     [message release], message = nil;
 }
 
-#pragma mark GKPeerPickerControllerDelegate
+
+#pragma mark GKPeerPickerControllerDelegate methods
 - (void)peerPickerController:(GKPeerPickerController *)picker 
               didConnectPeer:(NSString *)peerID 
                    toSession:(GKSession *)newSession {
-    self.session = newSession;
-    [self.session setDataReceiveHandler:self withContext:NULL];
+    self.gameSession = newSession;
+    [self.gameSession setDataReceiveHandler:self withContext:NULL];
     NSLog(@"Peer: %@", peerID);
     [picker dismiss];
     
-    self.numberField.hidden = NO;
-    self.sendBarButton.enabled = YES;
+    NSString *tempInstruction = [[NSString alloc]
+                                 initWithFormat:@"Please enter a number between %d and %d",
+                                                 kMinimum, kMaximum];    
+    self.instructionRangeLabel.text = tempInstruction;
+    [tempInstruction release];
+
+    theAnswer = [self randomIntegerBetweenMin:kMinimum andMax:kMaximum];
+    DLog(@"theAnswer = %d", theAnswer);
+
+    [self enableUI:YES];
 }
 
 
-// TODO: implement session ended, disable sendBarButton
+#pragma mark GKSessionDelegate methods
+- (void)session:(GKSession *)session
+           peer:(NSString *)peerID
+ didChangeState:(GKPeerConnectionState)state {
+    switch (state) 
+    { 
+        case GKPeerStateConnected: 
+			[session setDataReceiveHandler: self withContext: nil]; 
+//			opponentID = peerID;
+//			actingAsHost ? [self hostGame] : [self joinGame];
+			break;
+        case GKPeerStateDisconnected: 
+            [self enableUI:NO];
+			break;            
+    } 
+}
+
+
+- (void)session:(GKSession *)session
+didReceiveConnectionRequestFromPeer:(NSString *)peerID {
+//	actingAsHost = NO;
+}
+
+
+- (void)session:(GKSession *)session 
+connectionWithPeerFailed:(NSString *)peerID 
+      withError:(NSError *)error {
+	NSLog (@"session:connectionWithPeerFailed:withError:");	
+}
+
+- (void)session:(GKSession *)session 
+didFailWithError:(NSError *)error {
+	NSLog (@"session:didFailWithError:");		
+}
+
+#pragma mark -
+
+
 
 #pragma mark receive data handler
-
 - (void) receiveData:(NSData *)data 
             fromPeer:(NSString *)peer 
            inSession: (GKSession *)session 
@@ -139,7 +216,6 @@
     [numberString release], numberString = nil;
     [unarchiver release], unarchiver = nil;
 }
-
 
 
 @end

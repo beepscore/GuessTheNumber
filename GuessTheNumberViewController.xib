@@ -48,7 +48,7 @@
 						<bool key="IBUIOpaque">NO</bool>
 						<bool key="IBUIClipsSubviews">YES</bool>
 						<bool key="IBUIUserInteractionEnabled">NO</bool>
-						<string key="IBUIText">Please guess a number from 1-10</string>
+						<string key="IBUIText"/>
 						<object class="NSColor" key="IBUITextColor" id="283096279">
 							<int key="NSColorSpace">1</int>
 							<bytes key="NSRGB">MCAwIDAAA</bytes>
@@ -112,20 +112,6 @@
 						<reference key="NSNextResponder" ref="774585933"/>
 						<int key="NSvFlags">292</int>
 						<string key="NSFrame">{{159, 148}, {141, 21}}</string>
-						<reference key="NSSuperview" ref="774585933"/>
-						<bool key="IBUIOpaque">NO</bool>
-						<bool key="IBUIClipsSubviews">YES</bool>
-						<bool key="IBUIUserInteractionEnabled">NO</bool>
-						<string key="IBUIText"/>
-						<reference key="IBUITextColor" ref="283096279"/>
-						<nil key="IBUIHighlightedColor"/>
-						<int key="IBUIBaselineAdjustment">1</int>
-						<float key="IBUIMinimumFontSize">10</float>
-					</object>
-					<object class="IBUILabel" id="223676318">
-						<reference key="NSNextResponder" ref="774585933"/>
-						<int key="NSvFlags">292</int>
-						<string key="NSFrame">{{20, 223}, {280, 47}}</string>
 						<reference key="NSSuperview" ref="774585933"/>
 						<bool key="IBUIOpaque">NO</bool>
 						<bool key="IBUIClipsSubviews">YES</bool>
@@ -261,7 +247,6 @@
 							<bool key="EncodedWithXMLCoder">YES</bool>
 							<reference ref="870116083"/>
 							<reference ref="893828286"/>
-							<reference ref="223676318"/>
 							<reference ref="76599462"/>
 							<reference ref="897522996"/>
 							<reference ref="400917132"/>
@@ -302,12 +287,6 @@
 						<reference key="parent" ref="893828286"/>
 					</object>
 					<object class="IBObjectRecord">
-						<int key="objectID">22</int>
-						<reference key="object" ref="223676318"/>
-						<reference key="parent" ref="774585933"/>
-						<string key="objectName">secretNumber</string>
-					</object>
-					<object class="IBObjectRecord">
 						<int key="objectID">10</int>
 						<reference key="object" ref="76599462"/>
 						<reference key="parent" ref="774585933"/>
@@ -326,6 +305,7 @@
 						<int key="objectID">23</int>
 						<reference key="object" ref="150690278"/>
 						<reference key="parent" ref="774585933"/>
+						<string key="objectName">instructionRangeLabel</string>
 					</object>
 				</object>
 			</object>
@@ -341,7 +321,6 @@
 					<string>16.IBPluginDependency</string>
 					<string>18.IBPluginDependency</string>
 					<string>19.IBPluginDependency</string>
-					<string>22.IBPluginDependency</string>
 					<string>23.IBPluginDependency</string>
 					<string>6.IBEditorWindowLastContentRect</string>
 					<string>6.IBPluginDependency</string>
@@ -352,7 +331,6 @@
 					<bool key="EncodedWithXMLCoder">YES</bool>
 					<string>GuessTheNumberViewController</string>
 					<string>UIResponder</string>
-					<string>com.apple.InterfaceBuilder.IBCocoaTouchPlugin</string>
 					<string>com.apple.InterfaceBuilder.IBCocoaTouchPlugin</string>
 					<string>com.apple.InterfaceBuilder.IBCocoaTouchPlugin</string>
 					<string>com.apple.InterfaceBuilder.IBCocoaTouchPlugin</string>
@@ -407,12 +385,14 @@
 						<bool key="EncodedWithXMLCoder">YES</bool>
 						<object class="NSArray" key="dict.sortedKeys">
 							<bool key="EncodedWithXMLCoder">YES</bool>
+							<string>instructionRangeLabel</string>
 							<string>numberField</string>
 							<string>opponentNumber</string>
 							<string>sendBarButton</string>
 						</object>
 						<object class="NSMutableArray" key="dict.values">
 							<bool key="EncodedWithXMLCoder">YES</bool>
+							<string>UILabel</string>
 							<string>UITextField</string>
 							<string>UILabel</string>
 							<string>UIBarButtonItem</string>
