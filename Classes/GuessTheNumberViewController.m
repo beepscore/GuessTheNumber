@@ -30,12 +30,13 @@ NSInteger theAnswer;
 
 // Ref http://stackoverflow.com/questions/1131101/whats-wrong-with-this-randomize-function
 // Note this works for arguments in either algebraic order.  i.e. it works if minimum > maximum
-//- (float)randomValueBetweenMin:(float)minimum andMax:(float)maximum {
-//    return (((float) arc4random() / 0xFFFFFFFFu) * (maximum - minimum)) + minimum;
-//}
+- (float)randomFloatBetweenMin:(float)minimum andMax:(float)maximum {
+    return (((float) arc4random() / 0xFFFFFFFFu) * (maximum - minimum)) + minimum;
+}
+
+
 - (NSInteger)randomIntegerBetweenMin:(NSInteger)minimum andMax:(NSInteger)maximum {
-    return (NSInteger) ((((float)arc4random() / 0xFFFFFFFFu)  * (maximum - minimum)) 
-                        + minimum);
+    return (NSInteger) lround([self randomFloatBetweenMin:(float)minimum andMax:(float)maximum]);
 }
 
 
@@ -54,7 +55,7 @@ NSInteger theAnswer;
         [tempInstruction release];
         
         theAnswer = [self randomIntegerBetweenMin:kMinimum andMax:kMaximum];
-        
+                
         self.instructionRangeLabel.hidden = NO;
         self.myNumberField.hidden = NO;
         self.sendBarButton.enabled = YES; 
