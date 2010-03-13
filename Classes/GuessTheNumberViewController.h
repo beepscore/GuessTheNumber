@@ -13,16 +13,16 @@
 <GKPeerPickerControllerDelegate, GKSessionDelegate, UITextFieldDelegate> {
     GKSession *gameSession;
     UILabel *instructionRangeLabel;
-    UITextField *numberField;
-    UILabel *opponentNumber;
+    UITextField *myNumberField;
+    UILabel *opponentNumberLabel;
     UIBarButtonItem *sendBarButton;
 }
 
 @property(nonatomic, retain)GKSession *gameSession;
 @property(nonatomic, retain)IBOutlet UILabel *instructionRangeLabel;
 
-@property(nonatomic, retain)IBOutlet UITextField *numberField;
-@property(nonatomic, retain)IBOutlet UILabel *opponentNumber;
+@property(nonatomic, retain)IBOutlet UITextField *myNumberField;
+@property(nonatomic, retain)IBOutlet UILabel *opponentNumberLabel;
 
 @property(nonatomic, retain)IBOutlet UIBarButtonItem *sendBarButton;
 

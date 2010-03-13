@@ -17,27 +17,51 @@
 @synthesize gameSession;
 // instantiated in nib file
 @synthesize instructionRangeLabel;
-@synthesize numberField;
-@synthesize opponentNumber;
+@synthesize myNumberField;
+@synthesize opponentNumberLabel;
 @synthesize sendBarButton;
 
 const NSInteger kMinimum = 1;
 const NSInteger kMaximum = 10;
+
+// the program generates theAnswer, players try to guess it.
 NSInteger theAnswer;
+
+
+// Ref http://stackoverflow.com/questions/1131101/whats-wrong-with-this-randomize-function
+// Note this works for arguments in either algebraic order.  i.e. it works if minimum > maximum
+//- (float)randomValueBetweenMin:(float)minimum andMax:(float)maximum {
+//    return (((float) arc4random() / 0xFFFFFFFFu) * (maximum - minimum)) + minimum;
+//}
+- (NSInteger)randomIntegerBetweenMin:(NSInteger)minimum andMax:(NSInteger)maximum {
+    return (NSInteger) ((((float)arc4random() / 0xFFFFFFFFu)  * (maximum - minimum)) 
+                        + minimum);
+}
 
 
 // Implement viewDidLoad to do additional setup after loading the view, typically from a nib.
 - (void)enableUI:(BOOL)enableUI {
+    
     if (! enableUI) {
         self.instructionRangeLabel.hidden = YES;
-        self.numberField.hidden = YES;
+        self.myNumberField.hidden = YES;
         self.sendBarButton.enabled = NO;        
     } else {
+        NSString *tempInstruction = [[NSString alloc]
+                                     initWithFormat:@"Please enter a number between %d and %d",
+                                     kMinimum, kMaximum];    
+        self.instructionRangeLabel.text = tempInstruction;
+        [tempInstruction release];
+        
+        theAnswer = [self randomIntegerBetweenMin:kMinimum andMax:kMaximum];
+        
         self.instructionRangeLabel.hidden = NO;
-        self.numberField.hidden = NO;
-        self.sendBarButton.enabled = YES;        
+        self.myNumberField.hidden = NO;
+        self.sendBarButton.enabled = YES; 
+        
+        DLog(@"instruction range label %@", self.instructionRangeLabel.text);
+        DLog(@"theAnswer = %d", theAnswer); 
     }
-
 }
 
 
@@ -45,17 +69,7 @@ NSInteger theAnswer;
     [super viewDidLoad];
     [self enableUI:NO];
 }
-
-
 #pragma mark -
-// Ref http://stackoverflow.com/questions/1131101/whats-wrong-with-this-randomize-function
-// Note this works for arguments in either algebraic order.  i.e. it works if minimum > maximum
-//- (float)randomValueBetweenMin:(float)minimum andMax:(float)maximum {
-//    return (((float) arc4random() / 0xFFFFFFFFu) * (maximum - minimum)) + minimum;
-//}
-- (NSInteger)randomIntegerBetweenMin:(NSInteger)minimum andMax:(NSInteger)maximum {
-    return (((NSInteger) arc4random() / 0xFFFFFFFFu) * (maximum - minimum)) + minimum;
-}
 
 
 #pragma mark memory management methods
@@ -77,8 +91,8 @@ NSInteger theAnswer;
     if (nil == newView) {
         self.gameSession = nil;
         self.instructionRangeLabel = nil;
-        self.numberField = nil;
-        self.opponentNumber = nil;
+        self.myNumberField = nil;
+        self.opponentNumberLabel = nil;
         self.sendBarButton = nil;
     }
     [super setView:newView];
@@ -88,8 +102,8 @@ NSInteger theAnswer;
 - (void)dealloc {
     [gameSession release], gameSession = nil;
     [instructionRangeLabel release], instructionRangeLabel = nil;
-    [numberField release], numberField = nil;
-    [opponentNumber release], opponentNumber = nil;
+    [myNumberField release], myNumberField = nil;
+    [opponentNumberLabel release], opponentNumberLabel = nil;
     [sendBarButton release], sendBarButton = nil;
     [super dealloc];
 }
@@ -128,9 +142,9 @@ NSInteger theAnswer;
 
 
 - (IBAction)sendNumber:(id)sender {
-    [self.numberField resignFirstResponder];
+    [self.myNumberField resignFirstResponder];
     
-    NSInteger number = [self.numberField.text integerValue];
+    NSInteger number = [self.myNumberField.text integerValue];
     DLog(@"My number = %d", number);
     NSMutableData *message = [[NSMutableData alloc] init];
     NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
@@ -150,15 +164,6 @@ NSInteger theAnswer;
     [self.gameSession setDataReceiveHandler:self withContext:NULL];
     NSLog(@"Peer: %@", peerID);
     [picker dismiss];
-    
-    NSString *tempInstruction = [[NSString alloc]
-                                 initWithFormat:@"Please enter a number between %d and %d",
-                                                 kMinimum, kMaximum];    
-    self.instructionRangeLabel.text = tempInstruction;
-    [tempInstruction release];
-
-    theAnswer = [self randomIntegerBetweenMin:kMinimum andMax:kMaximum];
-    DLog(@"theAnswer = %d", theAnswer);
 
     [self enableUI:YES];
 }
@@ -172,8 +177,9 @@ NSInteger theAnswer;
     { 
         case GKPeerStateConnected: 
 			[session setDataReceiveHandler: self withContext: nil]; 
-//			opponentID = peerID;
-//			actingAsHost ? [self hostGame] : [self joinGame];
+            //			opponentID = peerID;
+            //			actingAsHost ? [self hostGame] : [self joinGame];
+            [self enableUI:YES];
 			break;
         case GKPeerStateDisconnected: 
             [self enableUI:NO];
@@ -184,7 +190,7 @@ NSInteger theAnswer;
 
 - (void)session:(GKSession *)session
 didReceiveConnectionRequestFromPeer:(NSString *)peerID {
-//	actingAsHost = NO;
+    //	actingAsHost = NO;
 }
 
 
@@ -198,7 +204,6 @@ connectionWithPeerFailed:(NSString *)peerID
 didFailWithError:(NSError *)error {
 	NSLog (@"session:didFailWithError:");		
 }
-
 #pragma mark -
 
 
@@ -212,10 +217,9 @@ didFailWithError:(NSError *)error {
     NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingWithData:data];
     NSInteger theirNumber = [unarchiver decodeIntForKey:@"number"];
     NSString *numberString = [[NSString alloc] initWithFormat:@"%d", theirNumber];
-    self.opponentNumber.text = numberString;
+    self.opponentNumberLabel.text = numberString;
     [numberString release], numberString = nil;
     [unarchiver release], unarchiver = nil;
 }
-
 
 @end
