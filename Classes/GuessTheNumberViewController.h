@@ -7,10 +7,26 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <GameKit/GameKit.h>
 
-@interface GuessTheNumberViewController : UIViewController {
+@interface GuessTheNumberViewController : UIViewController 
+<GKPeerPickerControllerDelegate, UITextFieldDelegate> {
+    GKSession *session;
+    UITextField *numberField;
+    UILabel *opponentNumber;
+    UIBarButtonItem *sendBarButton;
 
 }
+
+@property(nonatomic, retain)GKSession *session;
+@property(nonatomic, retain)IBOutlet UITextField *numberField;
+@property(nonatomic, retain)IBOutlet UILabel *opponentNumber;
+
+@property(nonatomic, retain)IBOutlet UIBarButtonItem *sendBarButton;
+
+
+- (IBAction)startAGame:(id)sender;
+- (IBAction)sendNumber:(id)sender;
 
 @end
 
