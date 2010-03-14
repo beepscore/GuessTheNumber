@@ -18,29 +18,18 @@ const NSInteger kMaximum = 10;
 @implementation GuessTheNumberViewController
 
 @synthesize gameSession;
+@synthesize isGameHost;
+@synthesize playerWins;
+
 // instantiated in nib file
 @synthesize instructionRangeLabel;
 @synthesize myNumberField;
 @synthesize opponentNumberLabel;
+@synthesize debugStatusLabel;
 @synthesize startQuitButton;
-@synthesize isGameHost;
-@synthesize playerWins;
 
-
-// the program generates theAnswer, players try to guess it.
-NSInteger theAnswer;
-
-#pragma mark helper methods
-// Ref http://stackoverflow.com/questions/1131101/whats-wrong-with-this-randomize-function
-// Note this works for arguments in either algebraic order.  i.e. it works if minimum > maximum
-- (float)randomFloatBetweenMin:(float)minimum andMax:(float)maximum {
-    return (((float) arc4random() / 0xFFFFFFFFu) * (maximum - minimum)) + minimum;
-}
-
-
-- (NSInteger)randomIntegerBetweenMin:(NSInteger)minimum andMax:(NSInteger)maximum {
-    return (NSInteger) lround([self randomFloatBetweenMin:(float)minimum andMax:(float)maximum]);
-}
+// the host instance generates secretNumber, players try to guess it.
+NSInteger secretNumber = 0;
 
 
 - (void)enableUI:(BOOL)enableUI {    
@@ -57,11 +46,12 @@ NSInteger theAnswer;
 // Implement viewDidLoad to do additional setup after loading the view, typically from a nib.
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.isGameHost = NO;
     [self enableUI:NO];
 }
-#pragma mark -
 
 
+#pragma mark memory management methods
 - (void)didReceiveMemoryWarning {
     // Releases the view if it doesn't have a superview.
     [super didReceiveMemoryWarning];
@@ -82,6 +72,7 @@ NSInteger theAnswer;
         self.instructionRangeLabel = nil;
         self.myNumberField = nil;
         self.opponentNumberLabel = nil;
+        self.debugStatusLabel = nil;
         self.startQuitButton = nil;
     }
     [super setView:newView];
@@ -93,30 +84,48 @@ NSInteger theAnswer;
     [instructionRangeLabel release], instructionRangeLabel = nil;
     [myNumberField release], myNumberField = nil;
     [opponentNumberLabel release], opponentNumberLabel = nil;
+    [debugStatusLabel release], debugStatusLabel = nil;
     [startQuitButton release], startQuitButton = nil;
     [super dealloc];
 }
 
 
 #pragma mark game methods
-// Ref Dudney sec 13.6
--(void) updateTapCountLabels {
+// Ref http://stackoverflow.com/questions/1131101/whats-wrong-with-this-randomize-function
+// Note this works for arguments in either algebraic order.  i.e. it works if minimum > maximum
+- (float)randomFloatBetweenMin:(float)minimum andMax:(float)maximum {
+    return (((float) arc4random() / 0xFFFFFFFFu) * (maximum - minimum)) + minimum;
 }
 
--(void) initGame {
+
+- (NSInteger)randomIntegerBetweenMin:(NSInteger)minimum andMax:(NSInteger)maximum {
+    return (NSInteger) lround([self randomFloatBetweenMin:(float)minimum andMax:(float)maximum]);
+}
+
+-(void)initGame {
     NSString *tempInstruction = [[NSString alloc]
                                  initWithFormat:@"Please enter a number between %d and %d",
                                  kMinimum, kMaximum];    
     self.instructionRangeLabel.text = tempInstruction;
-    [tempInstruction release];        
-    
-    theAnswer = [self randomIntegerBetweenMin:kMinimum andMax:kMaximum];
-    DLog(@"theAnswer = %d", theAnswer); 
+    [tempInstruction release];
+    [self enableUI:YES];
 }
 
 
+// Ref Dudney sec 13.6
 -(void) hostGame {
-	[self initGame];
+    [self initGame];
+    
+    // TODO: setting isGameHost here may be redundant
+    self.isGameHost = YES;
+    
+    // only the host sets secretNumber
+    secretNumber = [self randomIntegerBetweenMin:kMinimum andMax:kMaximum];
+    DLog(@"secretNumber = %d", secretNumber); 
+    self.debugStatusLabel.text = [NSString 
+                                  stringWithFormat:@"hostGame isGameHost = %d, secretNumber = %d", 
+                                  isGameHost, secretNumber];
+    
 	NSMutableData *message = [[NSMutableData alloc] init];
 	NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc]
                                  initForWritingWithMutableData:message];
@@ -125,19 +134,21 @@ NSInteger theAnswer;
 	NSError *sendErr = nil;
 	[self.gameSession sendDataToAllPeers: message
                             withDataMode:GKSendDataReliable error:&sendErr];
-	if (sendErr)
-		NSLog (@"send greeting failed: %@", sendErr);
+	if (sendErr) {
+		DLog(@"send greeting failed: %@", sendErr);
+    }
 	// change state of startQuitButton
-	self.startQuitButton.title = @"Quit";
+	self.startQuitButton.title = @"Quit host";
 	[message release];
 	[archiver release];
-	[self updateTapCountLabels];
 }
 
 -(void) joinGame {
 	[self initGame];
+    // TODO: setting isGameHost here may be redundant
+    self.isGameHost = NO;
+    self.debugStatusLabel.text = @"joinGame";
 	self.startQuitButton.title = @"Quit";
-    //	[self updateTapCountLabels];
 }
 
 
@@ -155,12 +166,37 @@ NSInteger theAnswer;
 
 -(void) endGame {
 	opponentID = nil;
+    self.debugStatusLabel.text = @"endGame";    
 	self.startQuitButton.title = @"Find";
 	[self.gameSession disconnectFromAllPeers];
 	[self showEndGameAlert];
 }
 #pragma mark -
 
+- (void)sendNumber:(id)sender {
+    [self.myNumberField resignFirstResponder];
+    
+    NSInteger number = [self.myNumberField.text integerValue];
+    NSMutableData *message = [[NSMutableData alloc] init];
+    NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
+    [archiver encodeInt:number forKey:@"number"];
+    
+    // did we just win?
+	self.playerWins = (number == secretNumber);
+    if (self.playerWins) {
+        [archiver encodeBool:YES forKey:END_GAME_KEY];
+    }
+    
+    [archiver finishEncoding];
+    [self.gameSession sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
+    [archiver release], archiver = nil;
+    [message release], message = nil;    
+    
+	// also end game locally
+	if (playerWins) {
+        [self endGame];   
+    }
+}
 
 #pragma mark UI event handlers
 /*
@@ -187,9 +223,12 @@ NSInteger theAnswer;
 
 #pragma mark IBActions
 // when Start button is tapped, show peerPicker.  Ref Dudney sec 13.5
-- (IBAction)startAGame:(id)sender {
+- (IBAction)handleStartQuitTapped:(id)sender {
 	if (! opponentID) {
-		isGameHost = YES;
+        DLog();
+        self.debugStatusLabel.text = [NSString 
+                                      stringWithFormat:@"handleStartQuitTapped: isGameHost = %d", 
+                                      isGameHost];
         
 		GKPeerPickerController *peerPickerController = [[GKPeerPickerController alloc] init];
 		peerPickerController.delegate = self;
@@ -200,30 +239,40 @@ NSInteger theAnswer;
 }
 
 
-- (void)sendNumber:(id)sender {
-    [self.myNumberField resignFirstResponder];
+#pragma mark GKPeerPickerControllerDelegate methods
+// TODO: this method broke starting a session !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Notifies peerPickerController delegate that the connection type is requesting a GKSession object.
+// You should return a valid GKSession object for use by the picker.
+// If this method is not implemented or returns 'nil', a default GKSession is created on the delegate's behalf.
+-(GKSession*) peerPickerController:(GKPeerPickerController*)controller 
+          sessionForConnectionType:(GKPeerPickerConnectionType)type {
     
-    NSInteger number = [self.myNumberField.text integerValue];
-    NSMutableData *message = [[NSMutableData alloc] init];
-    NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
-    [archiver encodeInt:number forKey:@"number"];
-    [archiver finishEncoding];
-    [self.gameSession sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
-    [archiver release], archiver = nil;
-    [message release], message = nil;
+	if (!self.gameSession) {
+        
+		GKSession *session = [[[GKSession alloc]
+                            initWithSessionID:nil
+                            displayName:nil
+                            sessionMode:GKSessionModePeer] autorelease];
+	}
+	return session;
 }
 
 
-#pragma mark GKPeerPickerControllerDelegate methods
+// Notifies peerPickerController delegate that the peer was connected to a GKSession.
 - (void)peerPickerController:(GKPeerPickerController *)picker 
               didConnectPeer:(NSString *)peerID 
                    toSession:(GKSession *)newSession {
-    self.gameSession = newSession;
-    [self.gameSession setDataReceiveHandler:self withContext:NULL];
-    NSLog(@"Peer: %@", peerID);
-    [picker dismiss];
+    DLog(@"didConnectPeer: %@", peerID);
     
-    [self enableUI:YES];
+    self.debugStatusLabel.text = [NSString 
+                                  stringWithFormat:@"didConnectPeer: %@", peerID];
+    
+    self.gameSession = newSession;    
+    self.gameSession.delegate = self;
+    self.isGameHost = YES;
+
+    [self.gameSession setDataReceiveHandler:self withContext:NULL];
+    [picker dismiss];
 }
 
 
@@ -234,15 +283,18 @@ NSInteger theAnswer;
     switch (state) 
     { 
         case GKPeerStateConnected: 
-			[session setDataReceiveHandler: self withContext: nil]; 
+            DLog(@"GKPeerStateConnected");
+            self.debugStatusLabel.text = @"GKPeerStateConnected";
+			[session setDataReceiveHandler:self withContext:nil]; 
             
             opponentID = peerID;
             
             isGameHost ? [self hostGame] : [self joinGame];
-            [self enableUI:YES];
 			break;
+            
         case GKPeerStateDisconnected: 
-            [self enableUI:NO];
+            DLog(@"GKPeerStateDisconnected");
+            self.debugStatusLabel.text = @"GKPeerStateDisconnected";
 			break;            
     } 
 }
@@ -251,23 +303,29 @@ NSInteger theAnswer;
 - (void)session:(GKSession *)session
 didReceiveConnectionRequestFromPeer:(NSString *)peerID {
     self.isGameHost = NO;
+    self.debugStatusLabel.text = [NSString 
+                                  stringWithFormat:@"didReceiveConnectionRequestFromPeer: isGameHost = %d", isGameHost];
 }
 
 
 - (void)session:(GKSession *)session 
 connectionWithPeerFailed:(NSString *)peerID 
       withError:(NSError *)error {
-	NSLog (@"session:connectionWithPeerFailed:withError:");	
+	DLog();	
+    self.debugStatusLabel.text = @"connectionWithPeerFailed:";
 }
 
 - (void)session:(GKSession *)session 
 didFailWithError:(NSError *)error {
-	NSLog (@"session:didFailWithError:");		
+	DLog();	
+    self.debugStatusLabel.text = @"didFailWithError:";
 }
 
 // Ref Dudney sec 13.8
-// TODO: add endGame and joinGame messages !!!!!!!!!!!!!!!!!
-#pragma mark receive data handler
+# pragma mark receive data from session
+// receive data from a peer. callbacks here are set by calling
+// [session setDataHandler: self context: whatever];
+// when accepting a connection from another peer (ie, when didChangeState sends GKPeerStateConnected)
 - (void) receiveData:(NSData *)data 
             fromPeer:(NSString *)peerID 
            inSession: (GKSession *)session 
@@ -278,6 +336,15 @@ didFailWithError:(NSError *)error {
     NSString *opponentNumberString = [[NSString alloc] initWithFormat:@"%d", opponentNumber];
     self.opponentNumberLabel.text = opponentNumberString;
     [opponentNumberString release], opponentNumberString = nil;
+    
+    
+    if ([unarchiver containsValueForKey:END_GAME_KEY]) {
+		[self endGame];
+	}
+	if ([unarchiver containsValueForKey:START_GAME_KEY]) {
+		[self joinGame];
+	}
+    
     [unarchiver release], unarchiver = nil;
 }
 

@@ -16,30 +16,32 @@
 
 @interface GuessTheNumberViewController : UIViewController 
 <GKPeerPickerControllerDelegate, GKSessionDelegate, UITextFieldDelegate> {
-    
-    GKSession *gameSession;
+
     NSString *opponentID;
+
+    GKSession *gameSession;
+    BOOL isGameHost;
+    BOOL playerWins;
 
     UILabel *instructionRangeLabel;
     UITextField *myNumberField;
     UILabel *opponentNumberLabel;
+    UILabel *debugStatusLabel;
     UIBarButtonItem *startQuitButton;
-    BOOL isGameHost;
-    BOOL playerWins;
-
 }
 
 @property(nonatomic, retain)GKSession *gameSession;
-@property(nonatomic, retain)IBOutlet UILabel *instructionRangeLabel;
-@property(nonatomic, retain)IBOutlet UITextField *myNumberField;
-@property(nonatomic, retain)IBOutlet UILabel *opponentNumberLabel;
-@property(nonatomic,retain)IBOutlet UIBarButtonItem *startQuitButton;
 @property(nonatomic,assign)BOOL isGameHost;
 @property(nonatomic,assign)BOOL playerWins;
 
+@property(nonatomic, retain)IBOutlet UILabel *instructionRangeLabel;
+@property(nonatomic, retain)IBOutlet UITextField *myNumberField;
+@property(nonatomic, retain)IBOutlet UILabel *opponentNumberLabel;
+@property(nonatomic, retain)IBOutlet UILabel *debugStatusLabel;
+@property(nonatomic,retain)IBOutlet UIBarButtonItem *startQuitButton;
 
-- (IBAction)startAGame:(id)sender;
-- (void)sendNumber:(id)sender;
+
+- (IBAction)handleStartQuitTapped:(id)sender;
 
 
 @end
