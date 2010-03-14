@@ -12,7 +12,7 @@
 		</object>
 		<object class="NSMutableArray" key="IBDocument.EditedObjectIDs">
 			<bool key="EncodedWithXMLCoder">YES</bool>
-			<integer value="6"/>
+			<integer value="15"/>
 		</object>
 		<object class="NSArray" key="IBDocument.PluginDependencies">
 			<bool key="EncodedWithXMLCoder">YES</bool>
@@ -144,16 +144,6 @@
 								<int key="IBUIStyle">1</int>
 								<reference key="IBUIToolbar" ref="893828286"/>
 							</object>
-							<object class="IBUIBarButtonItem" id="263459033">
-								<reference key="IBUIToolbar" ref="893828286"/>
-								<int key="IBUISystemItemIdentifier">5</int>
-							</object>
-							<object class="IBUIBarButtonItem" id="278626756">
-								<bool key="IBUIEnabled">NO</bool>
-								<string key="IBUITitle">Send Guess</string>
-								<int key="IBUIStyle">1</int>
-								<reference key="IBUIToolbar" ref="893828286"/>
-							</object>
 						</object>
 					</object>
 				</object>
@@ -189,27 +179,11 @@
 				</object>
 				<object class="IBConnectionRecord">
 					<object class="IBCocoaTouchEventConnection" key="connection">
-						<string key="label">sendNumber:</string>
-						<reference key="source" ref="278626756"/>
-						<reference key="destination" ref="372490531"/>
-					</object>
-					<int key="connectionID">17</int>
-				</object>
-				<object class="IBConnectionRecord">
-					<object class="IBCocoaTouchEventConnection" key="connection">
 						<string key="label">startAGame:</string>
 						<reference key="source" ref="779386430"/>
 						<reference key="destination" ref="372490531"/>
 					</object>
 					<int key="connectionID">20</int>
-				</object>
-				<object class="IBConnectionRecord">
-					<object class="IBCocoaTouchOutletConnection" key="connection">
-						<string key="label">sendBarButton</string>
-						<reference key="source" ref="372490531"/>
-						<reference key="destination" ref="278626756"/>
-					</object>
-					<int key="connectionID">21</int>
 				</object>
 				<object class="IBConnectionRecord">
 					<object class="IBCocoaTouchOutletConnection" key="connection">
@@ -234,6 +208,14 @@
 						<reference key="destination" ref="870116083"/>
 					</object>
 					<int key="connectionID">28</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBCocoaTouchOutletConnection" key="connection">
+						<string key="label">startQuitButton</string>
+						<reference key="source" ref="372490531"/>
+						<reference key="destination" ref="779386430"/>
+					</object>
+					<int key="connectionID">29</int>
 				</object>
 			</object>
 			<object class="IBMutableOrderedSet" key="objectRecords">
@@ -281,25 +263,13 @@
 						<reference key="object" ref="893828286"/>
 						<object class="NSMutableArray" key="children">
 							<bool key="EncodedWithXMLCoder">YES</bool>
-							<reference ref="263459033"/>
 							<reference ref="779386430"/>
-							<reference ref="278626756"/>
 						</object>
 						<reference key="parent" ref="774585933"/>
 					</object>
 					<object class="IBObjectRecord">
-						<int key="objectID">16</int>
-						<reference key="object" ref="278626756"/>
-						<reference key="parent" ref="893828286"/>
-					</object>
-					<object class="IBObjectRecord">
 						<int key="objectID">18</int>
 						<reference key="object" ref="779386430"/>
-						<reference key="parent" ref="893828286"/>
-					</object>
-					<object class="IBObjectRecord">
-						<int key="objectID">19</int>
-						<reference key="object" ref="263459033"/>
 						<reference key="parent" ref="893828286"/>
 					</object>
 					<object class="IBObjectRecord">
@@ -334,9 +304,7 @@
 					<string>10.IBPluginDependency</string>
 					<string>11.IBPluginDependency</string>
 					<string>15.IBPluginDependency</string>
-					<string>16.IBPluginDependency</string>
 					<string>18.IBPluginDependency</string>
-					<string>19.IBPluginDependency</string>
 					<string>23.IBPluginDependency</string>
 					<string>6.IBEditorWindowLastContentRect</string>
 					<string>6.IBPluginDependency</string>
@@ -347,8 +315,6 @@
 					<bool key="EncodedWithXMLCoder">YES</bool>
 					<string>GuessTheNumberViewController</string>
 					<string>UIResponder</string>
-					<string>com.apple.InterfaceBuilder.IBCocoaTouchPlugin</string>
-					<string>com.apple.InterfaceBuilder.IBCocoaTouchPlugin</string>
 					<string>com.apple.InterfaceBuilder.IBCocoaTouchPlugin</string>
 					<string>com.apple.InterfaceBuilder.IBCocoaTouchPlugin</string>
 					<string>com.apple.InterfaceBuilder.IBCocoaTouchPlugin</string>
@@ -376,7 +342,7 @@
 				</object>
 			</object>
 			<nil key="sourceID"/>
-			<int key="maxID">28</int>
+			<int key="maxID">29</int>
 		</object>
 		<object class="IBClassDescriber" key="IBDocument.Classes">
 			<object class="NSMutableArray" key="referencedPartialClassDescriptions">
@@ -404,7 +370,7 @@
 							<string>instructionRangeLabel</string>
 							<string>myNumberField</string>
 							<string>opponentNumberLabel</string>
-							<string>sendBarButton</string>
+							<string>startQuitButton</string>
 						</object>
 						<object class="NSMutableArray" key="dict.values">
 							<bool key="EncodedWithXMLCoder">YES</bool>
