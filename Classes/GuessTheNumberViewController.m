@@ -167,9 +167,10 @@ NSInteger secretNumber = 0;
                                       stringWithFormat:@"handleStartQuitTapped: isGameHost = %d", 
                                       isGameHost];
         
-        // note: picker is released in various picker delegate methods when picker use is done.
+        // Note: picker is released in various picker delegate methods when picker use is done.
         // Ignore Clang warning of potential leak.
         GKPeerPickerController *peerPickerController = [[GKPeerPickerController alloc] init];
+        
 		peerPickerController.delegate = self;
 		peerPickerController.connectionTypesMask = GKPeerPickerConnectionTypeNearby;
 		[peerPickerController show];
@@ -225,7 +226,7 @@ NSInteger secretNumber = 0;
 - (void)peerPickerController:(GKPeerPickerController *)picker 
               didConnectPeer:(NSString *)peerID 
                    toSession:(GKSession *)session {
-
+    
 	// Remember the current peer.
 	self.gamePeerId = peerID;  // copy    
     DLog(@"didConnectPeer: %@", self.gamePeerId);    
@@ -297,22 +298,38 @@ NSInteger secretNumber = 0;
 - (void)session:(GKSession *)session
            peer:(NSString *)peerID
  didChangeState:(GKPeerConnectionState)state {
+    
     switch (state) 
     { 
         case GKPeerStateConnected: 
             DLog(@"GKPeerStateConnected");
             self.debugStatusLabel.text = @"GKPeerStateConnected";
-			[session setDataReceiveHandler:self withContext:nil]; 
+            [session setDataReceiveHandler:self withContext:nil]; 
             
             opponentID = peerID;
             
             isGameHost ? [self hostGame] : [self joinGame];
-			break;
+            break;
             
-        case GKPeerStateDisconnected: 
+        case GKPeerStateDisconnected:
+            // We've been disconnected from the other peer.
             DLog(@"GKPeerStateDisconnected");
             self.debugStatusLabel.text = @"GKPeerStateDisconnected";
-			break;            
+            
+            // Update user alert or throw alert if it isn't already up
+            NSString *message = [NSString stringWithFormat:@"Could not reconnect with %@.", [session displayNameForPeer:peerID]];
+            if(self.connectionAlert && self.connectionAlert.visible) {
+                self.connectionAlert.message = message;
+            } 		else {
+                UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Lost Connection" message:message delegate:self cancelButtonTitle:@"End Game" otherButtonTitles:nil];
+                self.connectionAlert = alert;
+                [alert show];
+                [alert release];
+            }
+            
+            // go back to start mode
+            //self.gameState = kStateStartGame;
+            break; 
     } 
 }
 
