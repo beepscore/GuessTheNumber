@@ -116,9 +116,6 @@ NSInteger secretNumber = 0;
 -(void) hostGame {
     [self initGame];
     
-    // TODO: setting isGameHost here may be redundant
-    self.isGameHost = YES;
-    
     // only the host sets secretNumber
     secretNumber = [self randomIntegerBetweenMin:kMinimum andMax:kMaximum];
     DLog(@"secretNumber = %d", secretNumber); 
@@ -145,8 +142,6 @@ NSInteger secretNumber = 0;
 
 -(void) joinGame {
 	[self initGame];
-    // TODO: setting isGameHost here may be redundant
-    self.isGameHost = NO;
     self.debugStatusLabel.text = @"joinGame";
 	self.startQuitButton.title = @"Quit";
 }
@@ -247,14 +242,14 @@ NSInteger secretNumber = 0;
 -(GKSession*) peerPickerController:(GKPeerPickerController*)controller 
           sessionForConnectionType:(GKPeerPickerConnectionType)type {
     
-	if (!self.gameSession) {
-        
-		GKSession *session = [[[GKSession alloc]
+	if (!self.gameSession) {        
+		self.gameSession = [[GKSession alloc]
                             initWithSessionID:nil
                             displayName:nil
-                            sessionMode:GKSessionModePeer] autorelease];
-	}
-	return session;
+                            sessionMode:GKSessionModePeer];
+    }
+    self.gameSession.delegate = self;
+    return self.gameSession;
 }
 
 
@@ -268,9 +263,8 @@ NSInteger secretNumber = 0;
                                   stringWithFormat:@"didConnectPeer: %@", peerID];
     
     self.gameSession = newSession;    
-    self.gameSession.delegate = self;
     self.isGameHost = YES;
-
+    
     [self.gameSession setDataReceiveHandler:self withContext:NULL];
     [picker dismiss];
 }
