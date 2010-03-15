@@ -18,6 +18,7 @@ const NSInteger kMaximum = 10;
 @implementation GuessTheNumberViewController
 
 @synthesize gameSession;
+@synthesize gamePeerId;
 @synthesize isGameHost;
 @synthesize playerWins;
 
@@ -27,6 +28,7 @@ const NSInteger kMaximum = 10;
 @synthesize opponentNumberLabel;
 @synthesize debugStatusLabel;
 @synthesize startQuitButton;
+@synthesize connectionAlert;
 
 // the host instance generates secretNumber, players try to guess it.
 NSInteger secretNumber = 0;
@@ -46,6 +48,8 @@ NSInteger secretNumber = 0;
 // Implement viewDidLoad to do additional setup after loading the view, typically from a nib.
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.gameSession = nil;
+	self.gamePeerId = nil;
     self.isGameHost = NO;
     [self enableUI:NO];
 }
@@ -69,11 +73,17 @@ NSInteger secretNumber = 0;
 - (void)setView:(UIView *)newView {
     if (nil == newView) {
         self.gameSession = nil;
+        self.gamePeerId = nil;
         self.instructionRangeLabel = nil;
         self.myNumberField = nil;
         self.opponentNumberLabel = nil;
         self.debugStatusLabel = nil;
         self.startQuitButton = nil;
+        
+        if(self.connectionAlert.visible) {
+            [self.connectionAlert dismissWithClickedButtonIndex:-1 animated:NO];
+        }
+        self.connectionAlert = nil;        
     }
     [super setView:newView];
 }
@@ -81,16 +91,256 @@ NSInteger secretNumber = 0;
 
 - (void)dealloc {
     [gameSession release], gameSession = nil;
+    [gamePeerId release], gamePeerId = nil;
     [instructionRangeLabel release], instructionRangeLabel = nil;
     [myNumberField release], myNumberField = nil;
     [opponentNumberLabel release], opponentNumberLabel = nil;
     [debugStatusLabel release], debugStatusLabel = nil;
     [startQuitButton release], startQuitButton = nil;
+    
+    if(self.connectionAlert.visible) {
+		[self.connectionAlert dismissWithClickedButtonIndex:-1 animated:NO];
+	}
+	self.connectionAlert = nil;
+    
     [super dealloc];
 }
 
 
-#pragma mark game methods
+#pragma mark -
+
+- (void)sendNumber:(id)sender {
+    [self.myNumberField resignFirstResponder];
+    
+    NSInteger number = [self.myNumberField.text integerValue];
+    NSMutableData *message = [[NSMutableData alloc] init];
+    NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
+    [archiver encodeInt:number forKey:@"number"];
+    
+    // did we just win?
+	self.playerWins = (number == secretNumber);
+    if (self.playerWins) {
+        [archiver encodeBool:YES forKey:END_GAME_KEY];
+    }
+    
+    [archiver finishEncoding];
+    [self.gameSession sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
+    [archiver release], archiver = nil;
+    [message release], message = nil;    
+    
+	// also end game locally
+	if (playerWins) {
+        [self endGame];   
+    }
+}
+
+#pragma mark UI event handlers
+/*
+ // Override to allow orientations other than the default portrait orientation.
+ - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
+ // Return YES for supported orientations
+ return (interfaceOrientation == UIInterfaceOrientationPortrait);
+ }
+ */
+
+
+#pragma mark textField delegate methods
+// When user presses Return (or Done) key, resignFirstResponder will dismiss the keyboard
+- (BOOL)textFieldShouldReturn:(UITextField *)aTextField {
+    [aTextField resignFirstResponder];
+    return YES;
+}
+
+// called when textField resigns first responder
+- (void)textFieldDidEndEditing:(UITextField *)aTextField {
+    [self sendNumber:self];
+}
+
+
+#pragma mark IBActions
+// when Start button is tapped, show peerPicker.  Ref Dudney sec 13.5
+- (IBAction)handleStartQuitTapped:(id)sender {
+	if (! opponentID) {
+        DLog();
+        self.isGameHost = YES;
+        self.debugStatusLabel.text = [NSString 
+                                      stringWithFormat:@"handleStartQuitTapped: isGameHost = %d", 
+                                      isGameHost];
+        
+        // note: picker is released in various picker delegate methods when picker use is done.
+        // Ignore Clang warning of potential leak.
+        GKPeerPickerController *peerPickerController = [[GKPeerPickerController alloc] init];
+		peerPickerController.delegate = self;
+		peerPickerController.connectionTypesMask = GKPeerPickerConnectionTypeNearby;
+		[peerPickerController show];
+    }
+}
+
+// Ref Apple sample code for Game Kit GKTank
+#pragma mark GKPeerPickerControllerDelegate Methods
+- (void)peerPickerControllerDidCancel:(GKPeerPickerController *)picker { 
+	// Peer Picker automatically dismisses on user cancel. No need to programmatically dismiss.
+    
+	// autorelease the picker. 
+	picker.delegate = nil;
+    [picker autorelease]; 
+	
+	// invalidate and release game session if one is around.
+	if(self.gameSession != nil)	{
+		[self invalidateSession:self.gameSession];
+		self.gameSession = nil;
+	}	
+	// go back to start mode
+    // self.gameState = kStateStartGame;
+} 
+
+/*
+ *	Note: No need to implement -peerPickerController:didSelectConnectionType: 
+ *  delegate method since this app does not support multiple connection types.
+ *  See reference documentation for this delegate method and the GKPeerPickerController's
+ *  connectionTypesMask property.
+ */
+
+
+// TODO: this method broke starting a session !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Provide a custom session that has a custom session ID.
+// This is also an opportunity to provide a session with a custom display name.
+// Notifies peerPickerController delegate that the connection type is requesting a GKSession object.
+// You should return a valid GKSession object for use by the picker.
+// If this method is not implemented or returns 'nil', a default GKSession is created on the delegate's behalf.
+-(GKSession*) peerPickerController:(GKPeerPickerController*)controller 
+          sessionForConnectionType:(GKPeerPickerConnectionType)type {
+    
+    GKSession *session = [[GKSession alloc]
+                          initWithSessionID:nil
+                          displayName:nil
+                          sessionMode:GKSessionModePeer];
+    
+    // peer picker retains a reference, so autorelease ours so we don't leak.
+	return [session autorelease];
+}
+
+
+// Notifies peerPickerController delegate that the peer was connected to a GKSession.
+- (void)peerPickerController:(GKPeerPickerController *)picker 
+              didConnectPeer:(NSString *)peerID 
+                   toSession:(GKSession *)session {
+
+	// Remember the current peer.
+	self.gamePeerId = peerID;  // copy    
+    DLog(@"didConnectPeer: %@", self.gamePeerId);    
+    self.debugStatusLabel.text = [NSString 
+                                  stringWithFormat:@"didConnectPeer: %@", self.gamePeerId];    
+	
+	// Make sure we have a reference to the game session and it is set up
+	self.gameSession = session; // retain
+	self.gameSession.delegate = self; 
+	[self.gameSession setDataReceiveHandler:self withContext:NULL];
+	
+	// Done with the Peer Picker so dismiss it.
+	[picker dismiss];
+	picker.delegate = nil;
+	[picker autorelease];
+	
+	// Start Multiplayer game by entering a cointoss state to determine who is server/client.
+	// self.gameState = kStateMultiplayerCointoss;
+    self.isGameHost = YES;
+}
+
+
+#pragma mark -
+#pragma mark Session Related Methods
+- (void)invalidateSession:(GKSession *)session {
+	if(session != nil) {
+		[session disconnectFromAllPeers]; 
+		session.available = NO; 
+		[session setDataReceiveHandler: nil withContext: NULL]; 
+		session.delegate = nil; 
+	}
+}
+
+
+#pragma mark Data Send/Receive Methods
+/*
+ * This is the data receive handler method expected by the GKSession. 
+ * We set ourselves as the receive data handler in the -peerPickerController:didConnectPeer:toSession: method.
+ */
+// receive data from a peer. callbacks here are set by calling
+// [session setDataHandler: self context: whatever];
+// when accepting a connection from another peer (ie, when didChangeState sends GKPeerStateConnected)
+- (void) receiveData:(NSData *)data 
+            fromPeer:(NSString *)peerID 
+           inSession: (GKSession *)session 
+             context:(void *)context {
+    
+    // Ref Dudney sec 13.8
+    NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingWithData:data];
+    NSInteger opponentNumber = [unarchiver decodeIntForKey:@"number"];
+    NSString *opponentNumberString = [[NSString alloc] initWithFormat:@"%d", opponentNumber];
+    self.opponentNumberLabel.text = opponentNumberString;
+    [opponentNumberString release], opponentNumberString = nil;
+    
+    
+    if ([unarchiver containsValueForKey:END_GAME_KEY]) {
+		[self endGame];
+	}
+	if ([unarchiver containsValueForKey:START_GAME_KEY]) {
+		[self joinGame];
+	}
+    
+    [unarchiver release], unarchiver = nil;
+}
+
+
+#pragma mark GKSessionDelegate methods
+// we've gotten a state change in the session for the given peer.
+- (void)session:(GKSession *)session
+           peer:(NSString *)peerID
+ didChangeState:(GKPeerConnectionState)state {
+    switch (state) 
+    { 
+        case GKPeerStateConnected: 
+            DLog(@"GKPeerStateConnected");
+            self.debugStatusLabel.text = @"GKPeerStateConnected";
+			[session setDataReceiveHandler:self withContext:nil]; 
+            
+            opponentID = peerID;
+            
+            isGameHost ? [self hostGame] : [self joinGame];
+			break;
+            
+        case GKPeerStateDisconnected: 
+            DLog(@"GKPeerStateDisconnected");
+            self.debugStatusLabel.text = @"GKPeerStateDisconnected";
+			break;            
+    } 
+}
+
+
+- (void)session:(GKSession *)session
+didReceiveConnectionRequestFromPeer:(NSString *)peerID {
+    self.isGameHost = NO;
+    self.debugStatusLabel.text = [NSString 
+                                  stringWithFormat:@"didReceiveConnectionRequestFromPeer: isGameHost = %d", isGameHost];
+}
+
+
+- (void)session:(GKSession *)session 
+connectionWithPeerFailed:(NSString *)peerID 
+      withError:(NSError *)error {
+	DLog();	
+    self.debugStatusLabel.text = @"connectionWithPeerFailed:";
+}
+
+- (void)session:(GKSession *)session 
+didFailWithError:(NSError *)error {
+	DLog();	
+    self.debugStatusLabel.text = @"didFailWithError:";
+}
+
+
+#pragma mark -
+#pragma mark Game Logic Methods
 // Ref http://stackoverflow.com/questions/1131101/whats-wrong-with-this-randomize-function
 // Note this works for arguments in either algebraic order.  i.e. it works if minimum > maximum
 - (float)randomFloatBetweenMin:(float)minimum andMax:(float)maximum {
@@ -166,184 +416,6 @@ NSInteger secretNumber = 0;
 	[self.gameSession disconnectFromAllPeers];
 	[self showEndGameAlert];
 }
-#pragma mark -
 
-- (void)sendNumber:(id)sender {
-    [self.myNumberField resignFirstResponder];
-    
-    NSInteger number = [self.myNumberField.text integerValue];
-    NSMutableData *message = [[NSMutableData alloc] init];
-    NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
-    [archiver encodeInt:number forKey:@"number"];
-    
-    // did we just win?
-	self.playerWins = (number == secretNumber);
-    if (self.playerWins) {
-        [archiver encodeBool:YES forKey:END_GAME_KEY];
-    }
-    
-    [archiver finishEncoding];
-    [self.gameSession sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
-    [archiver release], archiver = nil;
-    [message release], message = nil;    
-    
-	// also end game locally
-	if (playerWins) {
-        [self endGame];   
-    }
-}
-
-#pragma mark UI event handlers
-/*
- // Override to allow orientations other than the default portrait orientation.
- - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
- // Return YES for supported orientations
- return (interfaceOrientation == UIInterfaceOrientationPortrait);
- }
- */
-
-
-#pragma mark textField delegate methods
-// When user presses Return (or Done) key, resignFirstResponder will dismiss the keyboard
-- (BOOL)textFieldShouldReturn:(UITextField *)aTextField {
-    [aTextField resignFirstResponder];
-    return YES;
-}
-
-// called when textField resigns first responder
-- (void)textFieldDidEndEditing:(UITextField *)aTextField {
-    [self sendNumber:self];
-}
-
-
-#pragma mark IBActions
-// when Start button is tapped, show peerPicker.  Ref Dudney sec 13.5
-- (IBAction)handleStartQuitTapped:(id)sender {
-	if (! opponentID) {
-        DLog();
-        self.isGameHost = YES;
-        self.debugStatusLabel.text = [NSString 
-                                      stringWithFormat:@"handleStartQuitTapped: isGameHost = %d", 
-                                      isGameHost];
-        
-		// release peerPickerController in peerPickerController:didConnectPeer:toSession:
-        GKPeerPickerController *peerPickerController = [[GKPeerPickerController alloc] init];
-		peerPickerController.delegate = self;
-		peerPickerController.connectionTypesMask = GKPeerPickerConnectionTypeNearby;
-		[peerPickerController show];
-        }
-}
-
-
-#pragma mark GKPeerPickerControllerDelegate methods
-// TODO: this method broke starting a session !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// Notifies peerPickerController delegate that the connection type is requesting a GKSession object.
-// You should return a valid GKSession object for use by the picker.
-// If this method is not implemented or returns 'nil', a default GKSession is created on the delegate's behalf.
--(GKSession*) peerPickerController:(GKPeerPickerController*)controller 
-          sessionForConnectionType:(GKPeerPickerConnectionType)type {
-    
-	if (!self.gameSession) {        
-		self.gameSession = [[GKSession alloc]
-                            initWithSessionID:nil
-                            displayName:nil
-                            sessionMode:GKSessionModePeer];
-    }
-    self.gameSession.delegate = self;
-    return self.gameSession;
-}
-
-
-// Notifies peerPickerController delegate that the peer was connected to a GKSession.
-- (void)peerPickerController:(GKPeerPickerController *)picker 
-              didConnectPeer:(NSString *)peerID 
-                   toSession:(GKSession *)newSession {
-    DLog(@"didConnectPeer: %@", peerID);
-    
-    self.debugStatusLabel.text = [NSString 
-                                  stringWithFormat:@"didConnectPeer: %@", peerID];
-    
-    self.gameSession = newSession;    
-    self.gameSession.delegate = self;
-    self.isGameHost = YES;
-    
-    [self.gameSession setDataReceiveHandler:self withContext:NULL];
-    [picker dismiss];
-    [picker release], picker = nil;
-}
-
-
-#pragma mark GKSessionDelegate methods
-// Indicates a state change for the given peer.
-- (void)session:(GKSession *)session
-           peer:(NSString *)peerID
- didChangeState:(GKPeerConnectionState)state {
-    switch (state) 
-    { 
-        case GKPeerStateConnected: 
-            DLog(@"GKPeerStateConnected");
-            self.debugStatusLabel.text = @"GKPeerStateConnected";
-			[session setDataReceiveHandler:self withContext:nil]; 
-            
-            opponentID = peerID;
-            
-            isGameHost ? [self hostGame] : [self joinGame];
-			break;
-            
-        case GKPeerStateDisconnected: 
-            DLog(@"GKPeerStateDisconnected");
-            self.debugStatusLabel.text = @"GKPeerStateDisconnected";
-			break;            
-    } 
-}
-
-
-- (void)session:(GKSession *)session
-didReceiveConnectionRequestFromPeer:(NSString *)peerID {
-    self.isGameHost = NO;
-    self.debugStatusLabel.text = [NSString 
-                                  stringWithFormat:@"didReceiveConnectionRequestFromPeer: isGameHost = %d", isGameHost];
-}
-
-
-- (void)session:(GKSession *)session 
-connectionWithPeerFailed:(NSString *)peerID 
-      withError:(NSError *)error {
-	DLog();	
-    self.debugStatusLabel.text = @"connectionWithPeerFailed:";
-}
-
-- (void)session:(GKSession *)session 
-didFailWithError:(NSError *)error {
-	DLog();	
-    self.debugStatusLabel.text = @"didFailWithError:";
-}
-
-// Ref Dudney sec 13.8
-# pragma mark receive data from session
-// receive data from a peer. callbacks here are set by calling
-// [session setDataHandler: self context: whatever];
-// when accepting a connection from another peer (ie, when didChangeState sends GKPeerStateConnected)
-- (void) receiveData:(NSData *)data 
-            fromPeer:(NSString *)peerID 
-           inSession: (GKSession *)session 
-             context:(void *)context {
-    
-    NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingWithData:data];
-    NSInteger opponentNumber = [unarchiver decodeIntForKey:@"number"];
-    NSString *opponentNumberString = [[NSString alloc] initWithFormat:@"%d", opponentNumber];
-    self.opponentNumberLabel.text = opponentNumberString;
-    [opponentNumberString release], opponentNumberString = nil;
-    
-    
-    if ([unarchiver containsValueForKey:END_GAME_KEY]) {
-		[self endGame];
-	}
-	if ([unarchiver containsValueForKey:START_GAME_KEY]) {
-		[self joinGame];
-	}
-    
-    [unarchiver release], unarchiver = nil;
-}
 
 @end
