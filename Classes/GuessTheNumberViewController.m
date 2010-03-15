@@ -221,16 +221,17 @@ NSInteger secretNumber = 0;
 - (IBAction)handleStartQuitTapped:(id)sender {
 	if (! opponentID) {
         DLog();
+        self.isGameHost = YES;
         self.debugStatusLabel.text = [NSString 
                                       stringWithFormat:@"handleStartQuitTapped: isGameHost = %d", 
                                       isGameHost];
         
-		GKPeerPickerController *peerPickerController = [[GKPeerPickerController alloc] init];
+		// release peerPickerController in peerPickerController:didConnectPeer:toSession:
+        GKPeerPickerController *peerPickerController = [[GKPeerPickerController alloc] init];
 		peerPickerController.delegate = self;
 		peerPickerController.connectionTypesMask = GKPeerPickerConnectionTypeNearby;
 		[peerPickerController show];
-        [peerPickerController release], peerPickerController = nil;
-    }
+        }
 }
 
 
@@ -263,14 +264,17 @@ NSInteger secretNumber = 0;
                                   stringWithFormat:@"didConnectPeer: %@", peerID];
     
     self.gameSession = newSession;    
+    self.gameSession.delegate = self;
     self.isGameHost = YES;
     
     [self.gameSession setDataReceiveHandler:self withContext:NULL];
     [picker dismiss];
+    [picker release], picker = nil;
 }
 
 
 #pragma mark GKSessionDelegate methods
+// Indicates a state change for the given peer.
 - (void)session:(GKSession *)session
            peer:(NSString *)peerID
  didChangeState:(GKPeerConnectionState)state {
