@@ -15,6 +15,18 @@
 const NSInteger kMinimum = 1;
 const NSInteger kMaximum = 10;
 
+
+// declare anonymous category for "private" methods, avoid listing in .h file
+// Note in Objective C no method is actually private.
+// Ref http://stackoverflow.com/questions/1052233/iphone-obj-c-anonymous-category-or-private-category
+@interface GuessTheNumberViewController()
+-(void)invalidateSession:(GKSession *)session;
+-(void) hostGame;
+-(void) joinGame;
+-(void) endGame;
+@end
+
+
 @implementation GuessTheNumberViewController
 
 @synthesize gameSession;
@@ -134,6 +146,7 @@ NSInteger secretNumber = 0;
     }
 }
 
+
 #pragma mark UI event handlers
 /*
  // Override to allow orientations other than the default portrait orientation.
@@ -195,21 +208,18 @@ NSInteger secretNumber = 0;
     // self.gameState = kStateStartGame;
 } 
 
-/*
- *	Note: No need to implement -peerPickerController:didSelectConnectionType: 
- *  delegate method since this app does not support multiple connection types.
- *  See reference documentation for this delegate method and the GKPeerPickerController's
- *  connectionTypesMask property.
- */
+
+// Don't need to implement this method because this app doesn't support multiple connection types.
+// See reference documentation for this delegate method and 
+// the GKPeerPickerController's connectionTypesMask property.
+// -peerPickerController:didSelectConnectionType: {
+// } 
 
 
-// TODO: this method broke starting a session !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// Provide a custom session that has a custom session ID.
-// This is also an opportunity to provide a session with a custom display name.
 // Notifies peerPickerController delegate that the connection type is requesting a GKSession object.
 // You should return a valid GKSession object for use by the picker.
 // If this method is not implemented or returns 'nil', a default GKSession is created on the delegate's behalf.
--(GKSession*) peerPickerController:(GKPeerPickerController*)controller 
+- (GKSession*)peerPickerController:(GKPeerPickerController*)controller 
           sessionForConnectionType:(GKPeerPickerConnectionType)type {
     
     GKSession *session = [[GKSession alloc]
@@ -223,6 +233,9 @@ NSInteger secretNumber = 0;
 
 
 // Notifies peerPickerController delegate that the peer was connected to a GKSession.
+// During the game, each device retains its own session object instance in its own memory.
+// Each view controller sets itself as that device's session delegate.
+// The two sessions communicate over the one network connection.
 - (void)peerPickerController:(GKPeerPickerController *)picker 
               didConnectPeer:(NSString *)peerID 
                    toSession:(GKSession *)session {
@@ -245,7 +258,10 @@ NSInteger secretNumber = 0;
 	
 	// Start Multiplayer game by entering a cointoss state to determine who is server/client.
 	// self.gameState = kStateMultiplayerCointoss;
-    self.isGameHost = YES;
+    // Kris Markel assigns host role to lowest alphabetical PeerID.
+    //    if (self.id < self.gamePeerId) {        
+    //    self.isGameHost = YES;
+    //    }
 }
 
 
@@ -269,10 +285,10 @@ NSInteger secretNumber = 0;
 // receive data from a peer. callbacks here are set by calling
 // [session setDataHandler: self context: whatever];
 // when accepting a connection from another peer (ie, when didChangeState sends GKPeerStateConnected)
-- (void) receiveData:(NSData *)data 
-            fromPeer:(NSString *)peerID 
-           inSession: (GKSession *)session 
-             context:(void *)context {
+- (void)receiveData:(NSData *)data 
+           fromPeer:(NSString *)peerID 
+          inSession: (GKSession *)session 
+            context:(void *)context {
     
     // Ref Dudney sec 13.8
     NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingWithData:data];
@@ -287,8 +303,7 @@ NSInteger secretNumber = 0;
 	}
 	if ([unarchiver containsValueForKey:START_GAME_KEY]) {
 		[self joinGame];
-	}
-    
+	}    
     [unarchiver release], unarchiver = nil;
 }
 
@@ -303,7 +318,9 @@ NSInteger secretNumber = 0;
     { 
         case GKPeerStateConnected: 
             DLog(@"GKPeerStateConnected");
-            self.debugStatusLabel.text = @"GKPeerStateConnected";
+            self.debugStatusLabel.text = [NSString 
+                                          stringWithFormat:@"GKPeerStateConnected peerID = %@",
+                                          peerID];
             [session setDataReceiveHandler:self withContext:nil]; 
             
             opponentID = peerID;
@@ -314,14 +331,22 @@ NSInteger secretNumber = 0;
         case GKPeerStateDisconnected:
             // We've been disconnected from the other peer.
             DLog(@"GKPeerStateDisconnected");
-            self.debugStatusLabel.text = @"GKPeerStateDisconnected";
+            self.debugStatusLabel.text = [NSString 
+                                          stringWithFormat:@"GKPeerStateConnected peerID = %@",
+                                          peerID];
             
             // Update user alert or throw alert if it isn't already up
-            NSString *message = [NSString stringWithFormat:@"Could not reconnect with %@.", [session displayNameForPeer:peerID]];
-            if(self.connectionAlert && self.connectionAlert.visible) {
+            NSString *message = [NSString stringWithFormat:@"Could not reconnect with %@.", 
+                                 [session displayNameForPeer:peerID]];
+            if (self.connectionAlert && self.connectionAlert.visible) {
                 self.connectionAlert.message = message;
-            } 		else {
-                UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Lost Connection" message:message delegate:self cancelButtonTitle:@"End Game" otherButtonTitles:nil];
+            } else {
+                UIAlertView *alert = [[UIAlertView alloc]
+                                      initWithTitle:@"Lost Connection" 
+                                      message:message 
+                                      delegate:self 
+                                      cancelButtonTitle:@"End Game" 
+                                      otherButtonTitles:nil];
                 self.connectionAlert = alert;
                 [alert show];
                 [alert release];
@@ -336,9 +361,10 @@ NSInteger secretNumber = 0;
 
 - (void)session:(GKSession *)session
 didReceiveConnectionRequestFromPeer:(NSString *)peerID {
-    self.isGameHost = NO;
+    DLog();
     self.debugStatusLabel.text = [NSString 
-                                  stringWithFormat:@"didReceiveConnectionRequestFromPeer: isGameHost = %d", isGameHost];
+                                  stringWithFormat:@"session:didReceiveConnectionRequestFromPeer: = %@",
+                                  peerID];
 }
 
 
@@ -346,13 +372,15 @@ didReceiveConnectionRequestFromPeer:(NSString *)peerID {
 connectionWithPeerFailed:(NSString *)peerID 
       withError:(NSError *)error {
 	DLog();	
-    self.debugStatusLabel.text = @"connectionWithPeerFailed:";
+    self.debugStatusLabel.text = [NSString 
+                                  stringWithFormat:@"session:connectionWithPeerFailed: = %@",
+                                  peerID];
 }
 
 - (void)session:(GKSession *)session 
 didFailWithError:(NSError *)error {
 	DLog();	
-    self.debugStatusLabel.text = @"didFailWithError:";
+    self.debugStatusLabel.text = @"session:didFailWithError:";
 }
 
 
@@ -380,7 +408,7 @@ didFailWithError:(NSError *)error {
 
 
 // Ref Dudney sec 13.6
--(void) hostGame {
+- (void) hostGame {
     [self initGame];
     
     // only the host sets secretNumber
@@ -407,7 +435,7 @@ didFailWithError:(NSError *)error {
 	[archiver release];
 }
 
--(void) joinGame {
+- (void)joinGame {
 	[self initGame];
     self.debugStatusLabel.text = @"joinGame";
 	self.startQuitButton.title = @"Quit";
@@ -418,7 +446,7 @@ didFailWithError:(NSError *)error {
     self.playerWins = YES;
     UIAlertView *endGameAlert = [[UIAlertView alloc]
                                  initWithTitle: self.playerWins ? @"Victory!" : @"Defeat!"
-                                 message: self.playerWins ? @"You guessed the number!": @"You lose."
+                                 message: self.playerWins ? @"You guessed the number!" : @"You lose."
                                  delegate:nil
                                  cancelButtonTitle:@"OK"
                                  otherButtonTitles:nil];
@@ -426,7 +454,7 @@ didFailWithError:(NSError *)error {
     [endGameAlert release];
 }
 
--(void) endGame {
+- (void)endGame {
 	opponentID = nil;
     self.debugStatusLabel.text = @"endGame";    
 	self.startQuitButton.title = @"Find";

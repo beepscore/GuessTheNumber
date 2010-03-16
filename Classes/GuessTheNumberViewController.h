@@ -49,10 +49,5 @@
 
 - (IBAction)handleStartQuitTapped:(id)sender;
 
-- (void)invalidateSession:(GKSession *)session;
--(void) hostGame;
--(void) joinGame;
--(void) endGame;
-
 @end
 
