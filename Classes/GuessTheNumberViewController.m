@@ -525,8 +525,9 @@ didFailWithError:(NSError *)error {
         self.debugStatusLabel.text = debugString;
         [debugString release];
     }
+    // NOTE: use isEqualToString: for string comparison, not ==
     // TODO:  add check isGameHost????????????????????????????????????????????????
-    BOOL iWon = ((winnerID != @"") && (winnerID == self.gameSession.peerID));
+    BOOL iWon = [winnerID isEqualToString:self.gameSession.peerID];
     
     UIAlertView *endGameAlert = [[UIAlertView alloc]
                                  initWithTitle: iWon ? @"Victory!" : @"Defeat!"
