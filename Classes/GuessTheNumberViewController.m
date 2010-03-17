@@ -516,7 +516,17 @@ didFailWithError:(NSError *)error {
 
 
 -(void)showEndGameAlertForWinnerID:(NSString*)winnerID {	
-    BOOL iWon = (winnerID != self.opponentID);
+    if (DEBUG) {
+        NSString *debugString = [[NSString alloc]
+                                 initWithFormat:@"showEndGameAlertForWinnerID:%@ %@", 
+                                 [self.gameSession displayNameForPeer:winnerID],
+                                 winnerID];        
+        DLog(@"%@", debugString);         
+        self.debugStatusLabel.text = debugString;
+        [debugString release];
+    }
+    // TODO:  add check isGameHost????????????????????????????????????????????????
+    BOOL iWon = ((winnerID != @"") && (winnerID == self.gameSession.peerID));
     
     UIAlertView *endGameAlert = [[UIAlertView alloc]
                                  initWithTitle: iWon ? @"Victory!" : @"Defeat!"
@@ -531,8 +541,10 @@ didFailWithError:(NSError *)error {
 
 - (void)endGameWithWinnerID:(NSString*)winnerID {
     if (DEBUG) {
-        NSString *debugString = [[NSString alloc] initWithString:@"endGameWithWinnerID:"];        
-        DLog(@"%@", debugString);         
+        NSString *debugString = [[NSString alloc]
+                                 initWithFormat:@"endGameWithWinnerID:%@ %@", 
+                                 [self.gameSession displayNameForPeer:winnerID],
+                                 winnerID];        DLog(@"%@", debugString);         
         self.debugStatusLabel.text = debugString;
         [debugString release];
     }
