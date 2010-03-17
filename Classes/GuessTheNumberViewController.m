@@ -24,6 +24,7 @@
 - (void)joinGame;
 - (void)endGame;
 - (void)sendNumber:(id)sender;
+- (void)sendEndGame:(id)sender winnerID:(NSString *)peerID;
 
 @end
 
@@ -231,8 +232,6 @@ NSInteger secretNumber = 0;
     // Remember the current peer.
 	self.opponentID = peerID;  // copy    
     
-    // TODO:  Dudney code different from tank !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    
 	// Make sure we have a reference to the game session and it is set up
 	self.gameSession = session; // retain
 	
@@ -276,6 +275,16 @@ NSInteger secretNumber = 0;
     [opponentNumberString release], opponentNumberString = nil;
     
     
+    // If we are the host, we know the secret number and can check if opponent won
+    BOOL opponentWins = (self.isGameHost && (secretNumber == opponentNumber));    
+    if (opponentWins) {
+        [self sendEndGame:self winnerID:self.opponentID];
+        // also end game locally
+        [self endGame];   
+    }
+    
+    // TODO: check winnerID to see if joiner won or if host won !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
     if ([unarchiver containsValueForKey:END_GAME_KEY]) {
 		[self endGame];
 	}
@@ -293,24 +302,36 @@ NSInteger secretNumber = 0;
     NSMutableData *message = [[NSMutableData alloc] init];
     NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
     [archiver encodeInt:myNumber forKey:@"number"];
-    
-    // did we just win?
-    BOOL playerWins = (secretNumber == myNumber);
-    
-    if (playerWins) {
-        [archiver encodeBool:YES forKey:END_GAME_KEY];
-    }
     [archiver finishEncoding];
     
     [self.gameSession sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
     [archiver release], archiver = nil;
-    [message release], message = nil;    
+    [message release], message = nil; 
     
-	// also end game locally
-    if (playerWins) {
-        [self endGame];   
+    // If we are the host, we know the secret number and can check if we won
+    BOOL hostWins = (self.isGameHost && (secretNumber == myNumber));    
+    if (hostWins) {
+        // TODO: send hostID as winnerID, not peerID !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // ????: how do we get our own ID?  Check Class 9 video???????????????
+        [self sendEndGame:self winnerID:@"hostID"];
     }
 }
+
+
+- (void)sendEndGame:(id)sender winnerID:(NSString *)winnerID {
+    NSMutableData *message = [[NSMutableData alloc] init];
+    NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
+    [archiver encodeBool:YES forKey:END_GAME_KEY];
+    [archiver encodeObject:winnerID forKey:@"winnerID"];
+    [archiver finishEncoding];
+    
+    [self.gameSession sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
+    [archiver release], archiver = nil;
+    [message release], message = nil; 
+	// also end game locally
+    [self endGame];
+}
+
 
 
 #pragma mark GKSessionDelegate methods
