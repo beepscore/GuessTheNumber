@@ -15,6 +15,7 @@
 //protocolkeys
 #define START_GAME_KEY @"startgame"
 #define END_GAME_KEY @"endgame"
+#define WINNER_ID_KEY @"winnerID"
 
 @interface GuessTheNumberViewController : UIViewController 
 <GKPeerPickerControllerDelegate, GKSessionDelegate, UITextFieldDelegate> {
@@ -22,7 +23,6 @@
     GKSession *gameSession;
     
     NSString *opponentID;
-    NSString *winnerID;    
     BOOL isGameHost;
     UInt32 myNumber;
     UInt32 opponentNumber;
@@ -41,7 +41,6 @@
 #pragma mark properties
 @property(nonatomic, retain)GKSession *gameSession;
 @property(nonatomic, copy)NSString *opponentID;
-@property(nonatomic, copy)NSString *winnerID;
 
 @property(nonatomic,assign)BOOL isGameHost;
 //@property(nonatomic,assign)BOOL playerWins;

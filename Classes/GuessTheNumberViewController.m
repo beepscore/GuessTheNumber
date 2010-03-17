@@ -22,9 +22,11 @@
 - (void)invalidateSession:(GKSession *)session;
 - (void)hostGame;
 - (void)joinGame;
-- (void)endGame;
+- (void)testForWinner;
+- (void)endGameWithWinnerID:(NSString*)winnerID;
+- (void)showEndGameAlertForWinnerID:(NSString*)winnerID;
 - (void)sendNumber:(id)sender;
-- (void)sendEndGame:(id)sender;
+- (void)sendEndGame:(id)sender winnerID:(NSString*)winnerID;
 
 @end
 
@@ -39,7 +41,6 @@ NSInteger secretNumber = 0;
 #pragma mark properties
 @synthesize gameSession;
 @synthesize opponentID;
-@synthesize winnerID;
 @synthesize isGameHost;
 
 //@synthesize playerWins;
@@ -94,7 +95,6 @@ NSInteger secretNumber = 0;
     if (nil == newView) {
         self.gameSession = nil;
         self.opponentID = nil;
-        self.winnerID = nil;
         self.instructionRangeLabel = nil;
         self.myNumberField = nil;
         self.opponentNumberLabel = nil;
@@ -113,7 +113,6 @@ NSInteger secretNumber = 0;
 - (void)dealloc {
     [gameSession release], gameSession = nil;
     [opponentID release], opponentID = nil;
-    [winnerID release], winnerID = nil;
     [instructionRangeLabel release], instructionRangeLabel = nil;
     [myNumberField release], myNumberField = nil;
     [opponentNumberLabel release], opponentNumberLabel = nil;
@@ -292,22 +291,14 @@ NSInteger secretNumber = 0;
     self.opponentNumberLabel.text = opponentNumberString;
     [opponentNumberString release], opponentNumberString = nil;
     
-    
-    // If we are the host, we know the secret number and can check if opponent won
-    BOOL opponentWins = (self.isGameHost && (secretNumber == opponentNumber));    
-    if (opponentWins) {
-        self.winnerID = self.opponentID;
-        [self sendEndGame:self];
-        // also end game locally
-        [self endGame];   
-    }
-    
-    // TODO: check winnerID to see if joiner won or if host won !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // only host will be allowed to test
+    [self testForWinner];
     
     if ([unarchiver containsValueForKey:END_GAME_KEY]) {
-		[self endGame];
+        NSString *winnerString = [unarchiver decodeObjectForKey:WINNER_ID_KEY];
+		[self endGameWithWinnerID:winnerString];
 	}
-	if ([unarchiver containsValueForKey:START_GAME_KEY]) {
+    if ([unarchiver containsValueForKey:START_GAME_KEY]) {
 		[self joinGame];
 	}    
     [unarchiver release], unarchiver = nil;
@@ -327,29 +318,22 @@ NSInteger secretNumber = 0;
     [archiver release], archiver = nil;
     [message release], message = nil; 
     
-    // If we are the host, we know the secret number and can check if we won
-    BOOL hostWins = (self.isGameHost && (secretNumber == myNumber));    
-    if (hostWins) {
-        self.winnerID = self.gameSession.peerID;
-        [self sendEndGame:self];
-    }
+    // only host will be allowed to test
+    [self testForWinner];
 }
 
 
-- (void)sendEndGame:(id)sender {
+- (void)sendEndGame:(id)sender winnerID:(NSString*)winnerID {
     NSMutableData *message = [[NSMutableData alloc] init];
     NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
     [archiver encodeBool:YES forKey:END_GAME_KEY];
-    [archiver encodeObject:winnerID forKey:@"winnerID"];
+    [archiver encodeObject:winnerID forKey:WINNER_ID_KEY];
     [archiver finishEncoding];
     
     [self.gameSession sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
     [archiver release], archiver = nil;
     [message release], message = nil; 
-	// also end game locally
-    [self endGame];
 }
-
 
 
 #pragma mark GKSessionDelegate methods
@@ -387,24 +371,24 @@ NSInteger secretNumber = 0;
                 self.debugStatusLabel.text = debugString;
                 [debugString release];
             } 
-
-                          // Update user alert or throw alert if it isn't already up
-                          //            NSString *message = [NSString stringWithFormat:@"Could not reconnect with %@.", 
-                          //                                 [session displayNameForPeer:peerID]];
-                          //            if (self.connectionAlert && self.connectionAlert.visible) {
-                          //                self.connectionAlert.message = message;
-                          //            } else {
-                          //                UIAlertView *alert = [[UIAlertView alloc]
-                          //                                      initWithTitle:@"Lost Connection" 
-                          //                                      message:message 
-                          //                                      delegate:self 
-                          //                                      cancelButtonTitle:@"End Game" 
-                          //                                      otherButtonTitles:nil];
-                          //                self.connectionAlert = alert;
-                          //                [alert show];
-                          //                [alert release];
-                          //            }
-
+            
+            // Update user alert or throw alert if it isn't already up
+            //            NSString *message = [NSString stringWithFormat:@"Could not reconnect with %@.", 
+            //                                 [session displayNameForPeer:peerID]];
+            //            if (self.connectionAlert && self.connectionAlert.visible) {
+            //                self.connectionAlert.message = message;
+            //            } else {
+            //                UIAlertView *alert = [[UIAlertView alloc]
+            //                                      initWithTitle:@"Lost Connection" 
+            //                                      message:message 
+            //                                      delegate:self 
+            //                                      cancelButtonTitle:@"End Game" 
+            //                                      otherButtonTitles:nil];
+            //                self.connectionAlert = alert;
+            //                [alert show];
+            //                [alert release];
+            //            }
+            
             
             // go back to start mode
             //self.gameState = kStateStartGame;
@@ -517,12 +501,26 @@ didFailWithError:(NSError *)error {
 }
 
 
--(void)showEndGameAlert {	
-    BOOL playerWins = (secretNumber == myNumber);
+- (void)testForWinner {
+    // If we are the host, we know the secret number and can test for a winner
+    // FIXME: Currently this doesn't allow for a tie
+    if (self.isGameHost) {
+        if (secretNumber == opponentNumber) {
+            [self sendEndGame:self winnerID:self.opponentID];  
+        }
+        if (secretNumber == myNumber) {
+            [self sendEndGame:self winnerID:self.gameSession.peerID];  
+        }
+    }
+}
+
+
+-(void)showEndGameAlertForWinnerID:(NSString*)winnerID {	
+    BOOL iWon = (winnerID != self.opponentID);
     
     UIAlertView *endGameAlert = [[UIAlertView alloc]
-                                 initWithTitle: playerWins ? @"Victory!" : @"Defeat!"
-                                 message: playerWins ? @"You guessed the number!" : @"You lose."
+                                 initWithTitle: iWon ? @"Victory!" : @"Defeat!"
+                                 message: iWon ? @"You guessed the number!" : @"You lose."
                                  delegate:nil
                                  cancelButtonTitle:@"OK"
                                  otherButtonTitles:nil];
@@ -531,17 +529,17 @@ didFailWithError:(NSError *)error {
 }
 
 
-- (void)endGame {
+- (void)endGameWithWinnerID:(NSString*)winnerID {
     if (DEBUG) {
-        NSString *debugString = [[NSString alloc] initWithString:@"endGame"];        
+        NSString *debugString = [[NSString alloc] initWithString:@"endGameWithWinnerID:"];        
         DLog(@"%@", debugString);         
         self.debugStatusLabel.text = debugString;
         [debugString release];
     }
-    [self showEndGameAlert];
+    [self showEndGameAlertForWinnerID:winnerID];
 	self.opponentID = nil;
 	[self invalidateSession:self.gameSession];
-    self.startQuitButton.title = @"Find";
+    // self.startQuitButton.title = @"Find";
 }
 
 @end
