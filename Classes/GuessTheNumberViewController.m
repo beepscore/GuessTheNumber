@@ -69,7 +69,6 @@ NSInteger secretNumber = 0;
     [super viewDidLoad];
     self.gameSession = nil;
 	self.opponentID = nil;
-    self.isGameHost = NO;
     [self enableUI:NO];
 }
 
@@ -296,20 +295,21 @@ NSInteger secretNumber = 0;
     [archiver encodeInt:myNumber forKey:@"number"];
     
     // did we just win?
-    //	self.playerWins = (number == secretNumber);
-    //    if (self.playerWins) {
-    //        [archiver encodeBool:YES forKey:END_GAME_KEY];
-    //    }
+    BOOL playerWins = (secretNumber == myNumber);
     
+    if (playerWins) {
+        [archiver encodeBool:YES forKey:END_GAME_KEY];
+    }
     [archiver finishEncoding];
+    
     [self.gameSession sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
     [archiver release], archiver = nil;
     [message release], message = nil;    
     
 	// also end game locally
-    //	if (playerWins) {
-    //        [self endGame];   
-    //    }
+    if (playerWins) {
+        [self endGame];   
+    }
 }
 
 
@@ -371,6 +371,7 @@ didReceiveConnectionRequestFromPeer:(NSString *)peerID {
     self.debugStatusLabel.text = [NSString 
                                   stringWithFormat:@"session:didReceiveConnectionRequestFromPeer: = %@",
                                   peerID];
+    self.isGameHost = NO;
 }
 
 
@@ -424,7 +425,7 @@ didFailWithError:(NSError *)error {
     DLog(@"secretNumber = %d", secretNumber); 
     self.debugStatusLabel.text = [NSString 
                                   stringWithFormat:@"hostGame isGameHost = %d, secretNumber = %d", 
-                                  isGameHost, secretNumber];
+                                  self.isGameHost, secretNumber];
     
 	NSMutableData *message = [[NSMutableData alloc] init];
 	NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc]
