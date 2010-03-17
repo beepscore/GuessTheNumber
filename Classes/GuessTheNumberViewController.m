@@ -154,20 +154,15 @@ NSInteger secretNumber = 0;
 // when Start button is tapped, show peerPicker.  Ref Dudney sec 13.5
 - (IBAction)handleStartQuitTapped:(id)sender {
     DLog();
-	if (! self.opponentID) {
-        self.isGameHost = YES;
-        self.debugStatusLabel.text = [NSString 
-                                      stringWithFormat:@"handleStartQuitTapped: isGameHost = %d", 
-                                      self.isGameHost];
-        
-        // Note: picker is released in various picker delegate methods when picker use is done.
-        // Ignore Clang warning of potential leak.
-        GKPeerPickerController *peerPickerController = [[GKPeerPickerController alloc] init];
-        
-		peerPickerController.delegate = self;
-		peerPickerController.connectionTypesMask = GKPeerPickerConnectionTypeNearby;
-		[peerPickerController show];
-    }
+    self.debugStatusLabel.text = @"handleStartQuitTapped:";
+    
+    // Note: picker is released in various picker delegate methods when picker use is done.
+    // Ignore Clang warning of potential leak.
+    GKPeerPickerController *peerPickerController = [[GKPeerPickerController alloc] init];
+    
+    peerPickerController.delegate = self;
+    peerPickerController.connectionTypesMask = GKPeerPickerConnectionTypeNearby;
+    [peerPickerController show];
 }
 
 
@@ -225,15 +220,24 @@ NSInteger secretNumber = 0;
               didConnectPeer:(NSString *)peerID 
                    toSession:(GKSession *)session {
     
-    DLog(@"didConnectPeer: %@", peerID);    
-    self.debugStatusLabel.text = [NSString 
-                                  stringWithFormat:@"didConnectPeer: %@", peerID];    
     
     // Remember the current peer.
 	self.opponentID = peerID;  // copy    
     
 	// Make sure we have a reference to the game session and it is set up
 	self.gameSession = session; // retain
+    
+    // Ref Kris Markel Class9.mov 11:30.  
+    // Compare each player's peerID, lower alpha becomes game host
+    DLog(@"My ID = %@, opponentID = %@", gameSession.peerID, self.opponentID); 
+    self.debugStatusLabel.text = [NSString 
+                                  stringWithFormat:@"My ID = %@, opponentID = %@", 
+                                  gameSession.peerID, self.opponentID];        
+    if (NSOrderedAscending == [gameSession.peerID compare:self.opponentID]) {
+        self.isGameHost = YES;
+    } else {
+        self.isGameHost = NO;
+    }    
 	
 	// Done with the Peer Picker so dismiss it.
 	[picker dismiss];
@@ -392,7 +396,6 @@ didReceiveConnectionRequestFromPeer:(NSString *)peerID {
     self.debugStatusLabel.text = [NSString 
                                   stringWithFormat:@"session:didReceiveConnectionRequestFromPeer: = %@",
                                   peerID];
-    self.isGameHost = NO;
 }
 
 
