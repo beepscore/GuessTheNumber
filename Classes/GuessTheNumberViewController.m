@@ -24,7 +24,7 @@
 - (void)joinGame;
 - (void)endGame;
 - (void)sendNumber:(id)sender;
-- (void)sendEndGame:(id)sender winnerID:(NSString *)peerID;
+- (void)sendEndGame:(id)sender;
 
 @end
 
@@ -39,6 +39,7 @@ NSInteger secretNumber = 0;
 #pragma mark properties
 @synthesize gameSession;
 @synthesize opponentID;
+@synthesize winnerID;
 @synthesize isGameHost;
 
 //@synthesize playerWins;
@@ -93,6 +94,7 @@ NSInteger secretNumber = 0;
     if (nil == newView) {
         self.gameSession = nil;
         self.opponentID = nil;
+        self.winnerID = nil;
         self.instructionRangeLabel = nil;
         self.myNumberField = nil;
         self.opponentNumberLabel = nil;
@@ -111,6 +113,7 @@ NSInteger secretNumber = 0;
 - (void)dealloc {
     [gameSession release], gameSession = nil;
     [opponentID release], opponentID = nil;
+    [winnerID release], winnerID = nil;
     [instructionRangeLabel release], instructionRangeLabel = nil;
     [myNumberField release], myNumberField = nil;
     [opponentNumberLabel release], opponentNumberLabel = nil;
@@ -153,8 +156,12 @@ NSInteger secretNumber = 0;
 #pragma mark IBActions
 // when Start button is tapped, show peerPicker.  Ref Dudney sec 13.5
 - (IBAction)handleStartQuitTapped:(id)sender {
-    DLog();
-    self.debugStatusLabel.text = @"handleStartQuitTapped:";
+    if (DEBUG) {
+        NSString *debugString = [[NSString alloc] initWithString:@"handleStartQuitTapped:"];        
+        DLog(@"%@", debugString);         
+        self.debugStatusLabel.text = debugString;
+        [debugString release];
+    }
     
     // Note: picker is released in various picker delegate methods when picker use is done.
     // Ignore Clang warning of potential leak.
@@ -229,11 +236,18 @@ NSInteger secretNumber = 0;
     
     // Ref Kris Markel Class9.mov 11:30.  
     // Compare each player's peerID, lower alpha becomes game host
-    DLog(@"My ID = %@, opponentID = %@", gameSession.peerID, self.opponentID); 
-    self.debugStatusLabel.text = [NSString 
-                                  stringWithFormat:@"My ID = %@, opponentID = %@", 
-                                  gameSession.peerID, self.opponentID];        
-    if (NSOrderedAscending == [gameSession.peerID compare:self.opponentID]) {
+    if (DEBUG) {
+        NSString *debugString = [[NSString alloc]
+                                 initWithFormat:@"I am %@ peerID = %@ \n Opponent is %@ peerID = %@", 
+                                 [session displayNameForPeer:self.gameSession.peerID],
+                                 self.gameSession.peerID, 
+                                 [session displayNameForPeer:self.opponentID],
+                                 self.opponentID];        
+        DLog(@"%@", debugString);         
+        self.debugStatusLabel.text = debugString;
+        [debugString release];
+    }
+    if (NSOrderedAscending == [self.gameSession.peerID compare:self.opponentID]) {
         self.isGameHost = YES;
     } else {
         self.isGameHost = NO;
@@ -282,7 +296,8 @@ NSInteger secretNumber = 0;
     // If we are the host, we know the secret number and can check if opponent won
     BOOL opponentWins = (self.isGameHost && (secretNumber == opponentNumber));    
     if (opponentWins) {
-        [self sendEndGame:self winnerID:self.opponentID];
+        self.winnerID = self.opponentID;
+        [self sendEndGame:self];
         // also end game locally
         [self endGame];   
     }
@@ -315,14 +330,13 @@ NSInteger secretNumber = 0;
     // If we are the host, we know the secret number and can check if we won
     BOOL hostWins = (self.isGameHost && (secretNumber == myNumber));    
     if (hostWins) {
-        // TODO: send hostID as winnerID, not peerID !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        // ????: how do we get our own ID?  Check Class 9 video???????????????
-        [self sendEndGame:self winnerID:@"hostID"];
+        self.winnerID = self.gameSession.peerID;
+        [self sendEndGame:self];
     }
 }
 
 
-- (void)sendEndGame:(id)sender winnerID:(NSString *)winnerID {
+- (void)sendEndGame:(id)sender {
     NSMutableData *message = [[NSMutableData alloc] init];
     NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
     [archiver encodeBool:YES forKey:END_GAME_KEY];
@@ -347,10 +361,14 @@ NSInteger secretNumber = 0;
     switch (state) 
     { 
         case GKPeerStateConnected: 
-            DLog(@"GKPeerStateConnected");
-            self.debugStatusLabel.text = [NSString 
-                                          stringWithFormat:@"GKPeerStateConnected peerID = %@",
-                                          peerID];
+            if (DEBUG) {
+                NSString *debugString = [[NSString alloc]
+                                         initWithFormat:@"GKPeerStateConnected to %@ peerID = %@",
+                                         [session displayNameForPeer:peerID], peerID];        
+                DLog(@"%@", debugString);         
+                self.debugStatusLabel.text = debugString;
+                [debugString release];
+            }
             [session setDataReceiveHandler:self withContext:nil]; 
             
             self.opponentID = peerID;
@@ -361,27 +379,32 @@ NSInteger secretNumber = 0;
         case GKPeerStateDisconnected:
             // We've been disconnected from the other peer.
             DLog(@"GKPeerStateDisconnected");
-            self.debugStatusLabel.text = [NSString 
-                                          stringWithFormat:@"GKPeerStateConnected peerID = %@",
-                                          peerID];
-            /*            
-             // Update user alert or throw alert if it isn't already up
-             //            NSString *message = [NSString stringWithFormat:@"Could not reconnect with %@.", 
-             //                                 [session displayNameForPeer:peerID]];
-             //            if (self.connectionAlert && self.connectionAlert.visible) {
-             //                self.connectionAlert.message = message;
-             //            } else {
-             //                UIAlertView *alert = [[UIAlertView alloc]
-             //                                      initWithTitle:@"Lost Connection" 
-             //                                      message:message 
-             //                                      delegate:self 
-             //                                      cancelButtonTitle:@"End Game" 
-             //                                      otherButtonTitles:nil];
-             //                self.connectionAlert = alert;
-             //                [alert show];
-             //                [alert release];
-             //            }
-             */
+            if (DEBUG) {
+                NSString *debugString = [[NSString alloc]
+                                         initWithFormat:@"GKPeerStateDisconnected from %@ peerID = %@",
+                                         [session displayNameForPeer:peerID], peerID];        
+                DLog(@"%@", debugString);         
+                self.debugStatusLabel.text = debugString;
+                [debugString release];
+            } 
+
+                          // Update user alert or throw alert if it isn't already up
+                          //            NSString *message = [NSString stringWithFormat:@"Could not reconnect with %@.", 
+                          //                                 [session displayNameForPeer:peerID]];
+                          //            if (self.connectionAlert && self.connectionAlert.visible) {
+                          //                self.connectionAlert.message = message;
+                          //            } else {
+                          //                UIAlertView *alert = [[UIAlertView alloc]
+                          //                                      initWithTitle:@"Lost Connection" 
+                          //                                      message:message 
+                          //                                      delegate:self 
+                          //                                      cancelButtonTitle:@"End Game" 
+                          //                                      otherButtonTitles:nil];
+                          //                self.connectionAlert = alert;
+                          //                [alert show];
+                          //                [alert release];
+                          //            }
+
             
             // go back to start mode
             //self.gameState = kStateStartGame;
@@ -402,17 +425,26 @@ didReceiveConnectionRequestFromPeer:(NSString *)peerID {
 - (void)session:(GKSession *)session 
 connectionWithPeerFailed:(NSString *)peerID 
       withError:(NSError *)error {
-    DLog(@"session:connectionWithPeerFailed: = %@", peerID);
-    self.debugStatusLabel.text = [NSString 
-                                  stringWithFormat:@"session:connectionWithPeerFailed: = %@",
-                                  peerID];
+    if (DEBUG) {
+        NSString *debugString = [[NSString alloc]
+                                 initWithFormat:@"session:connectionWithPeerFailed: to %@ peerID = %@",
+                                 [session displayNameForPeer:peerID], peerID];        
+        DLog(@"%@", debugString);         
+        self.debugStatusLabel.text = debugString;
+        [debugString release];
+    }
 }
 
 
 - (void)session:(GKSession *)session 
 didFailWithError:(NSError *)error {
-	DLog();	
-    self.debugStatusLabel.text = @"session:didFailWithError:";
+    if (DEBUG) {
+        NSString *debugString = [[NSString alloc]
+                                 initWithString:@"session:didFailWithError:"];        
+        DLog(@"%@", debugString);         
+        self.debugStatusLabel.text = debugString;
+        [debugString release];
+    }
 }
 
 
@@ -446,10 +478,14 @@ didFailWithError:(NSError *)error {
     
     // only the host sets secretNumber
     secretNumber = [self randomIntegerBetweenMin:kMinimumNumber andMax:kMaximumNumber];
-    DLog(@"secretNumber = %d", secretNumber); 
-    self.debugStatusLabel.text = [NSString 
-                                  stringWithFormat:@"hostGame isGameHost = %d, secretNumber = %d", 
-                                  self.isGameHost, secretNumber];
+    if (DEBUG) {
+        NSString *debugString = [[NSString alloc]
+                                 initWithFormat:@"hostGame isGameHost = %d, secretNumber = %d", 
+                                 self.isGameHost, secretNumber];        
+        DLog(@"%@", debugString);         
+        self.debugStatusLabel.text = debugString;
+        [debugString release];
+    }
     
 	NSMutableData *message = [[NSMutableData alloc] init];
 	NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc]
@@ -470,9 +506,13 @@ didFailWithError:(NSError *)error {
 
 
 - (void)joinGame {
-    DLog(); 
-	[self initGame];
-    self.debugStatusLabel.text = @"joinGame";
+    if (DEBUG) {
+        NSString *debugString = [[NSString alloc] initWithString:@"joinGame"];        
+        DLog(@"%@", debugString);         
+        self.debugStatusLabel.text = debugString;
+        [debugString release];
+    }
+    [self initGame];
 	self.startQuitButton.title = @"Quit";
 }
 
@@ -492,13 +532,16 @@ didFailWithError:(NSError *)error {
 
 
 - (void)endGame {
-    DLog();
-    self.debugStatusLabel.text = @"endGame";    
+    if (DEBUG) {
+        NSString *debugString = [[NSString alloc] initWithString:@"endGame"];        
+        DLog(@"%@", debugString);         
+        self.debugStatusLabel.text = debugString;
+        [debugString release];
+    }
+    [self showEndGameAlert];
 	self.opponentID = nil;
-	self.startQuitButton.title = @"Find";
 	[self invalidateSession:self.gameSession];
-	[self showEndGameAlert];
+    self.startQuitButton.title = @"Find";
 }
-
 
 @end

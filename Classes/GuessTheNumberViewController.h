@@ -22,6 +22,7 @@
     GKSession *gameSession;
     
     NSString *opponentID;
+    NSString *winnerID;    
     BOOL isGameHost;
     UInt32 myNumber;
     UInt32 opponentNumber;
@@ -40,6 +41,7 @@
 #pragma mark properties
 @property(nonatomic, retain)GKSession *gameSession;
 @property(nonatomic, copy)NSString *opponentID;
+@property(nonatomic, copy)NSString *winnerID;
 
 @property(nonatomic,assign)BOOL isGameHost;
 //@property(nonatomic,assign)BOOL playerWins;
