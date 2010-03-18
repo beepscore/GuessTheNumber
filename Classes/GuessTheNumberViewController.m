@@ -285,12 +285,22 @@ NSInteger secretNumber = 0;
     // Ref Dudney sec 13.8
     NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingWithData:data];
     opponentNumber = [unarchiver decodeIntForKey:@"number"];
+    
+    if (DEBUG) {
+        NSString *debugString = [[NSString alloc]
+                                 initWithFormat:@"opponentNumber = %d", opponentNumber];        
+        DLog(@"%@", debugString);         
+        self.debugStatusLabel.text = debugString;
+        [debugString release];
+    }
+    
     NSString *opponentNumberString = [[NSString alloc] initWithFormat:@"%d", opponentNumber];
     self.opponentNumberLabel.text = opponentNumberString;
     [opponentNumberString release], opponentNumberString = nil;
     
     // only host will be allowed to test.
-    [self sendWinnerID];
+    // ????: this line didnt break joiner seeing host number
+    //[self sendWinnerID];
     
     //    if ([unarchiver containsValueForKey:END_GAME_KEY]) {
     //        NSString *winnerString = [unarchiver decodeObjectForKey:WINNER_ID_KEY];
@@ -313,9 +323,33 @@ NSInteger secretNumber = 0;
     
     [self.myNumberField resignFirstResponder];    
     myNumber = [self.myNumberField.text integerValue];
+    if (DEBUG) {
+        NSString *debugString = [[NSString alloc]
+                                 initWithFormat:@"sendNumber = %d", myNumber];        
+        DLog(@"%@", debugString);         
+        self.debugStatusLabel.text = debugString;
+        [debugString release];
+    }
+    
     NSMutableData *message = [[NSMutableData alloc] init];
     NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
     [archiver encodeInt:myNumber forKey:@"number"];
+    
+    // move from sendWinnerID to try to fix joiner not getting host numbers
+    if (self.isGameHost) {
+        if (secretNumber == myNumber) {
+            [archiver encodeObject:self.gameSession.peerID forKey:WINNER_ID_KEY];
+            [archiver encodeBool:YES forKey:END_GAME_KEY];
+            [self showEndGameAlertForWon:YES];            
+        }
+        if (secretNumber == opponentNumber) {
+            [archiver encodeObject:self.opponentID forKey:WINNER_ID_KEY];
+            [archiver encodeBool:YES forKey:END_GAME_KEY];
+            [self showEndGameAlertForWon:NO];            
+        }
+    }
+    // =============
+        
     [archiver finishEncoding];
     
     [self.gameSession sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
@@ -323,7 +357,7 @@ NSInteger secretNumber = 0;
     [message release], message = nil; 
     
     // only host will be allowed to test.
-    [self sendWinnerID];
+    //[self sendWinnerID];
 }
 
 
@@ -345,8 +379,9 @@ NSInteger secretNumber = 0;
                 [debugString release];
             }
             [session setDataReceiveHandler:self withContext:nil]; 
-            
-            self.opponentID = peerID;
+
+            // ????: not necessary???????????????????????????????????????????????????????????????
+//            self.opponentID = peerID;
             
             self.isGameHost ? [self hostGame] : [self joinGame];
             break;
@@ -362,27 +397,6 @@ NSInteger secretNumber = 0;
                 self.debugStatusLabel.text = debugString;
                 [debugString release];
             } 
-            
-            // Update user alert or throw alert if it isn't already up
-            //            NSString *message = [NSString stringWithFormat:@"Could not reconnect with %@.", 
-            //                                 [session displayNameForPeer:peerID]];
-            //            if (self.connectionAlert && self.connectionAlert.visible) {
-            //                self.connectionAlert.message = message;
-            //            } else {
-            //                UIAlertView *alert = [[UIAlertView alloc]
-            //                                      initWithTitle:@"Lost Connection" 
-            //                                      message:message 
-            //                                      delegate:self 
-            //                                      cancelButtonTitle:@"End Game" 
-            //                                      otherButtonTitles:nil];
-            //                self.connectionAlert = alert;
-            //                [alert show];
-            //                [alert release];
-            //            }
-            
-            
-            // go back to start mode
-            //self.gameState = kStateStartGame;
             break; 
     } 
 }
@@ -491,11 +505,11 @@ didFailWithError:(NSError *)error {
 
 - (void)sendWinnerID {
     // If we are the host, we know the secret number and can test for a winner
-    // FIXME: Currently this doesn't allow for a tie
-    
+    // FIXME: Currently this doesn't allow for a tie    
     if (self.isGameHost) {
         NSMutableData *message = [[NSMutableData alloc] init];
-        NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
+        NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] 
+                                           initForWritingWithMutableData:message];
         
         if (secretNumber == myNumber) {
             [archiver encodeObject:self.gameSession.peerID forKey:WINNER_ID_KEY];
