@@ -6,12 +6,14 @@
 //  Copyright Beepscore LLC 2010. All rights reserved.
 //
 // Ref Apple sample code for Game Kit GKTank
+// Ref Dudney iPhone SDK Development Ch 13
+// Ref GuessTheNumberViewController.m  created by Kris Markel on 3/8/10. 
+//     Kris Markel UW HW9 video
 */
 
 #import <UIKit/UIKit.h>
 #import <GameKit/GameKit.h>
 
-#define TIME_KEY @"time"
 //protocolkeys
 #define START_GAME_KEY @"startgame"
 #define END_GAME_KEY @"endgame"
@@ -33,7 +35,6 @@
     UILabel *debugStatusLabel;
     UIBarButtonItem *startQuitButton;
 
-//    UIAlertView	*connectionAlert;
 }
 
 #pragma mark properties
@@ -47,8 +48,6 @@
 @property(nonatomic, retain)IBOutlet UILabel *opponentNumberLabel;
 @property(nonatomic, retain)IBOutlet UILabel *debugStatusLabel;
 @property(nonatomic,retain)IBOutlet UIBarButtonItem *startQuitButton;
-//@property(nonatomic, retain) UIAlertView *connectionAlert;
-
 
 - (IBAction)handleStartQuitTapped:(id)sender;
 

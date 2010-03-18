@@ -5,8 +5,6 @@
  //  Created by Steve Baker on 3/11/10.
  //  Copyright Beepscore LLC 2010. All rights reserved.
  //
- //  Reference: GuessTheNumberViewController.m
- //  Created by Kris Markel on 3/8/10.
  */
 
 #import "GuessTheNumberViewController.h"
@@ -98,11 +96,6 @@ NSInteger secretNumber = 0;
         self.opponentNumberLabel = nil;
         self.debugStatusLabel = nil;
         self.startQuitButton = nil;
-        
-        //        if(self.connectionAlert.visible) {
-        //            [self.connectionAlert dismissWithClickedButtonIndex:-1 animated:NO];
-        //        }
-        //        self.connectionAlert = nil;        
     }
     [super setView:newView];
 }
@@ -116,11 +109,6 @@ NSInteger secretNumber = 0;
     [opponentNumberLabel release], opponentNumberLabel = nil;
     [debugStatusLabel release], debugStatusLabel = nil;
     [startQuitButton release], startQuitButton = nil;
-    
-    //    if(self.connectionAlert.visible) {
-    //		[self.connectionAlert dismissWithClickedButtonIndex:-1 animated:NO];
-    //	}
-    //	self.connectionAlert = nil;
     
     [super dealloc];
 }
@@ -184,8 +172,6 @@ NSInteger secretNumber = 0;
 		[self invalidateSession:self.gameSession];
 		self.gameSession = nil;
 	}	
-	// go back to start mode
-    // self.gameState = kStateStartGame;
 } 
 
 
@@ -285,21 +271,13 @@ NSInteger secretNumber = 0;
     // Ref Dudney sec 13.8
     NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingWithData:data];
     opponentNumber = [unarchiver decodeIntForKey:@"number"];
-    
-    if (DEBUG) {
-        NSString *debugString = [[NSString alloc]
-                                 initWithFormat:@"opponentNumber = %d", opponentNumber];        
-        DLog(@"%@", debugString);         
-        self.debugStatusLabel.text = debugString;
-        [debugString release];
-    }
-    
     NSString *opponentNumberString = [[NSString alloc] initWithFormat:@"%d", opponentNumber];
     self.opponentNumberLabel.text = opponentNumberString;
     [opponentNumberString release], opponentNumberString = nil;
     
-    // only host will be allowed to test.
-    // ????: this line didnt break joiner seeing host number
+    // This message causes joiner to see that it has won right away.
+    // Without it, notification doesn't happen until host enters next guess.
+    // Causes bug opponent number which displayed correctly then disappears from field?????????
     //[self sendWinnerID];
     
     //    if ([unarchiver containsValueForKey:END_GAME_KEY]) {
@@ -323,19 +301,13 @@ NSInteger secretNumber = 0;
     
     [self.myNumberField resignFirstResponder];    
     myNumber = [self.myNumberField.text integerValue];
-    if (DEBUG) {
-        NSString *debugString = [[NSString alloc]
-                                 initWithFormat:@"sendNumber = %d", myNumber];        
-        DLog(@"%@", debugString);         
-        self.debugStatusLabel.text = debugString;
-        [debugString release];
-    }
-    
+
     NSMutableData *message = [[NSMutableData alloc] init];
     NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
     [archiver encodeInt:myNumber forKey:@"number"];
     
-    // move from sendWinnerID to try to fix joiner not getting host numbers
+    // =============
+    // ????: Moved from sendWinnerID to here. Fixed bug joiner not getting host numbers
     if (self.isGameHost) {
         if (secretNumber == myNumber) {
             [archiver encodeObject:self.gameSession.peerID forKey:WINNER_ID_KEY];
@@ -356,7 +328,7 @@ NSInteger secretNumber = 0;
     [archiver release], archiver = nil;
     [message release], message = nil; 
     
-    // only host will be allowed to test.
+    // ????: Deleted message, moved code from sendWinnerID to above. Fixed bug joiner not getting host numbers
     //[self sendWinnerID];
 }
 
@@ -380,9 +352,6 @@ NSInteger secretNumber = 0;
             }
             [session setDataReceiveHandler:self withContext:nil]; 
 
-            // ????: not necessary???????????????????????????????????????????????????????????????
-//            self.opponentID = peerID;
-            
             self.isGameHost ? [self hostGame] : [self joinGame];
             break;
             
@@ -503,6 +472,7 @@ didFailWithError:(NSError *)error {
 }
 
 
+// ????: Don't call from sendNumber, that caused joiner to not get numbers from host
 - (void)sendWinnerID {
     // If we are the host, we know the secret number and can test for a winner
     // FIXME: Currently this doesn't allow for a tie    
