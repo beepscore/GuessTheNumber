@@ -42,7 +42,6 @@ NSInteger secretNumber = 0;
 @synthesize opponentID;
 @synthesize isGameHost;
 
-//@synthesize playerWins;
 //@synthesize connectionAlert;
 
 // instantiated in nib file
@@ -152,7 +151,7 @@ NSInteger secretNumber = 0;
 
 
 #pragma mark IBActions
-// when Start button is tapped, show peerPicker.  Ref Dudney sec 13.5
+// When Start button is tapped, show peerPicker.  Ref Dudney sec 13.5
 - (IBAction)handleStartQuitTapped:(id)sender {
     if (DEBUG) {
         NSString *debugString = [[NSString alloc] initWithString:@"handleStartQuitTapped:"];        
@@ -474,8 +473,6 @@ didFailWithError:(NSError *)error {
 	if (sendErr) {
 		DLog(@"send greeting failed: %@", sendErr);
     }
-	// change state of startQuitButton
-//	self.startQuitButton.title = @"Quit host";
 	[message release];
 	[archiver release];
 }
@@ -489,7 +486,6 @@ didFailWithError:(NSError *)error {
         [debugString release];
     }
     [self initGame];
-//	self.startQuitButton.title = @"Quit";
 }
 
 
@@ -504,6 +500,7 @@ didFailWithError:(NSError *)error {
         if (secretNumber == myNumber) {
             [archiver encodeObject:self.gameSession.peerID forKey:WINNER_ID_KEY];
             [archiver encodeBool:YES forKey:END_GAME_KEY];
+            [self showEndGameAlertForWon:YES];            
         }
         if (secretNumber == opponentNumber) {
             [archiver encodeObject:self.opponentID forKey:WINNER_ID_KEY];

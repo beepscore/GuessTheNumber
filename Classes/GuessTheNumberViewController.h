@@ -27,8 +27,6 @@
     UInt32 myNumber;
     UInt32 opponentNumber;
 
-//    BOOL playerWins;    
-
     UILabel *instructionRangeLabel;
     UITextField *myNumberField;
     UILabel *opponentNumberLabel;
@@ -43,7 +41,6 @@
 @property(nonatomic, copy)NSString *opponentID;
 
 @property(nonatomic,assign)BOOL isGameHost;
-//@property(nonatomic,assign)BOOL playerWins;
 
 @property(nonatomic, retain)IBOutlet UILabel *instructionRangeLabel;
 @property(nonatomic, retain)IBOutlet UITextField *myNumberField;
