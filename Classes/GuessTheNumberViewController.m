@@ -22,11 +22,10 @@
 - (void)invalidateSession:(GKSession *)session;
 - (void)hostGame;
 - (void)joinGame;
-- (void)testForWinner;
+- (void)sendWinnerID;
 - (void)endGameWithWinnerID:(NSString*)winnerID;
-- (void)showEndGameAlertForWinnerID:(NSString*)winnerID;
+- (void)showEndGameAlertForWon:(BOOL)iWon;
 - (void)sendNumber:(id)sender;
-- (void)sendEndGame:(id)sender winnerID:(NSString*)winnerID;
 
 @end
 
@@ -291,13 +290,19 @@ NSInteger secretNumber = 0;
     self.opponentNumberLabel.text = opponentNumberString;
     [opponentNumberString release], opponentNumberString = nil;
     
-    // only host will be allowed to test
-    [self testForWinner];
+    // only host will be allowed to test.
+    [self sendWinnerID];
     
-    if ([unarchiver containsValueForKey:END_GAME_KEY]) {
+    //    if ([unarchiver containsValueForKey:END_GAME_KEY]) {
+    //        NSString *winnerString = [unarchiver decodeObjectForKey:WINNER_ID_KEY];
+    //		[self endGameWithWinnerID:winnerString];
+    //	}
+    
+    if ([unarchiver containsValueForKey:WINNER_ID_KEY]) {
         NSString *winnerString = [unarchiver decodeObjectForKey:WINNER_ID_KEY];
 		[self endGameWithWinnerID:winnerString];
-	}
+	}    
+    
     if ([unarchiver containsValueForKey:START_GAME_KEY]) {
 		[self joinGame];
 	}    
@@ -318,21 +323,8 @@ NSInteger secretNumber = 0;
     [archiver release], archiver = nil;
     [message release], message = nil; 
     
-    // only host will be allowed to test
-    [self testForWinner];
-}
-
-
-- (void)sendEndGame:(id)sender winnerID:(NSString*)winnerID {
-    NSMutableData *message = [[NSMutableData alloc] init];
-    NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
-    [archiver encodeBool:YES forKey:END_GAME_KEY];
-    [archiver encodeObject:winnerID forKey:WINNER_ID_KEY];
-    [archiver finishEncoding];
-    
-    [self.gameSession sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
-    [archiver release], archiver = nil;
-    [message release], message = nil; 
+    // only host will be allowed to test.
+    [self sendWinnerID];
 }
 
 
@@ -483,7 +475,7 @@ didFailWithError:(NSError *)error {
 		DLog(@"send greeting failed: %@", sendErr);
     }
 	// change state of startQuitButton
-	self.startQuitButton.title = @"Quit host";
+//	self.startQuitButton.title = @"Quit host";
 	[message release];
 	[archiver release];
 }
@@ -497,37 +489,35 @@ didFailWithError:(NSError *)error {
         [debugString release];
     }
     [self initGame];
-	self.startQuitButton.title = @"Quit";
+//	self.startQuitButton.title = @"Quit";
 }
 
 
-- (void)testForWinner {
+- (void)sendWinnerID {
     // If we are the host, we know the secret number and can test for a winner
     // FIXME: Currently this doesn't allow for a tie
+    
     if (self.isGameHost) {
-        if (secretNumber == opponentNumber) {
-            [self sendEndGame:self winnerID:self.opponentID];  
-        }
+        NSMutableData *message = [[NSMutableData alloc] init];
+        NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:message];
+        
         if (secretNumber == myNumber) {
-            [self sendEndGame:self winnerID:self.gameSession.peerID];  
+            [archiver encodeObject:self.gameSession.peerID forKey:WINNER_ID_KEY];
+            [archiver encodeBool:YES forKey:END_GAME_KEY];
         }
-    }
+        if (secretNumber == opponentNumber) {
+            [archiver encodeObject:self.opponentID forKey:WINNER_ID_KEY];
+            [archiver encodeBool:YES forKey:END_GAME_KEY];
+        }
+        [archiver finishEncoding];    
+        [self.gameSession sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
+        [archiver release], archiver = nil;
+        [message release], message = nil;        
+    }    
 }
 
 
--(void)showEndGameAlertForWinnerID:(NSString*)winnerID {	
-    if (DEBUG) {
-        NSString *debugString = [[NSString alloc]
-                                 initWithFormat:@"showEndGameAlertForWinnerID:%@ %@", 
-                                 [self.gameSession displayNameForPeer:winnerID],
-                                 winnerID];        
-        DLog(@"%@", debugString);         
-        self.debugStatusLabel.text = debugString;
-        [debugString release];
-    }
-    // NOTE: use isEqualToString: for string comparison, not ==
-    // TODO:  add check isGameHost????????????????????????????????????????????????
-    BOOL iWon = [winnerID isEqualToString:self.gameSession.peerID];
+-(void)showEndGameAlertForWon:(BOOL)iWon {	
     
     UIAlertView *endGameAlert = [[UIAlertView alloc]
                                  initWithTitle: iWon ? @"Victory!" : @"Defeat!"
@@ -545,14 +535,18 @@ didFailWithError:(NSError *)error {
         NSString *debugString = [[NSString alloc]
                                  initWithFormat:@"endGameWithWinnerID:%@ %@", 
                                  [self.gameSession displayNameForPeer:winnerID],
-                                 winnerID];        DLog(@"%@", debugString);         
+                                 winnerID];
+        DLog(@"%@", debugString);         
         self.debugStatusLabel.text = debugString;
         [debugString release];
     }
-    [self showEndGameAlertForWinnerID:winnerID];
+    
+    // NOTE: use isEqualToString: for string comparison, not ==
+    BOOL iWon = [winnerID isEqualToString:self.gameSession.peerID];
+    [self showEndGameAlertForWon:iWon];
+
 	self.opponentID = nil;
-	[self invalidateSession:self.gameSession];
-    // self.startQuitButton.title = @"Find";
+	//[self invalidateSession:self.gameSession];
 }
 
 @end
