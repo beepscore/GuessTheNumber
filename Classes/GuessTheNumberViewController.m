@@ -505,6 +505,7 @@ didFailWithError:(NSError *)error {
         if (secretNumber == opponentNumber) {
             [archiver encodeObject:self.opponentID forKey:WINNER_ID_KEY];
             [archiver encodeBool:YES forKey:END_GAME_KEY];
+            [self showEndGameAlertForWon:NO];            
         }
         [archiver finishEncoding];    
         [self.gameSession sendDataToAllPeers:message withDataMode:GKSendDataReliable error:NULL];
