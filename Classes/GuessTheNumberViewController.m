@@ -410,13 +410,13 @@ didFailWithError:(NSError *)error {
 #pragma mark Game Logic Methods
 // Ref http://stackoverflow.com/questions/1131101/whats-wrong-with-this-randomize-function
 // Note this works for arguments in either algebraic order.  i.e. it works if minimum > maximum
-- (float)randomFloatBetweenMin:(float)minimum andMax:(float)maximum {
-    return (((float) arc4random() / 0xFFFFFFFFu) * (maximum - minimum)) + minimum;
+- (CGFloat)randomFloatBetweenMin:(CGFloat)minimum andMax:(CGFloat)maximum {
+    return (((CGFloat) arc4random() / 0xFFFFFFFFu) * (maximum - minimum)) + minimum;
 }
 
 
 - (NSInteger)randomIntegerBetweenMin:(NSInteger)minimum andMax:(NSInteger)maximum {
-    return (NSInteger) lround([self randomFloatBetweenMin:(float)minimum andMax:(float)maximum]);
+    return (NSInteger) lround([self randomFloatBetweenMin:(CGFloat)minimum andMax:(CGFloat)maximum]);
 }
 
 
