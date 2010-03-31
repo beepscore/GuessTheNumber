@@ -81,35 +81,25 @@ NSInteger secretNumber = 0;
 }
 
 
+// Ref http://developer.apple.com/mac/library/documentation/Cocoa/Conceptual/MemoryMgmt/Articles/mmNibObjects.html
 - (void)viewDidUnload {
     // Release any retained subviews of the main view.
-    // e.g. self.myOutlet = nil;
-}
-
-
-- (void)setView:(UIView *)newView {
-    if (nil == newView) {
-        self.gameSession = nil;
-        self.opponentID = nil;
-        self.instructionRangeLabel = nil;
-        self.myNumberField = nil;
-        self.opponentNumberLabel = nil;
-        self.debugStatusLabel = nil;
-        self.startQuitButton = nil;
-    }
-    [super setView:newView];
+    // Release any retained outlets
+    // set properties to nil, which also releases them
+    self.gameSession = nil;
+    self.opponentID = nil;
+    self.instructionRangeLabel = nil;
+    self.myNumberField = nil;
+    self.opponentNumberLabel = nil;
+    self.debugStatusLabel = nil;
+    self.startQuitButton = nil;
+    
+    [super viewDidUnload];
 }
 
 
 - (void)dealloc {
-    [gameSession release], gameSession = nil;
-    [opponentID release], opponentID = nil;
-    [instructionRangeLabel release], instructionRangeLabel = nil;
-    [myNumberField release], myNumberField = nil;
-    [opponentNumberLabel release], opponentNumberLabel = nil;
-    [debugStatusLabel release], debugStatusLabel = nil;
-    [startQuitButton release], startQuitButton = nil;
-    
+
     [super dealloc];
 }
 
