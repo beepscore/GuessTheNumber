@@ -99,6 +99,13 @@ NSInteger secretNumber = 0;
 
 
 - (void)dealloc {
+    [gameSession release], gameSession = nil;
+    [opponentID release], opponentID = nil;
+    [instructionRangeLabel release], instructionRangeLabel = nil;
+    [myNumberField release], myNumberField = nil;
+    [opponentNumberLabel release], opponentNumberLabel = nil;
+    [debugStatusLabel release], debugStatusLabel = nil;
+    [startQuitButton release], startQuitButton = nil;
 
     [super dealloc];
 }
